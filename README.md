@@ -40,7 +40,7 @@ Demo accounts (when `AUTH_DEV_LOGIN=true` and `SEED_DEMO=true`, password `humana
 | `pnpm db:seed` | Seed reference data (+ demo with `SEED_DEMO=true`) |
 | `pnpm lint` | ESLint |
 | `pnpm test:integration` | End-to-end domain flow against the configured database |
-| `pnpm test:e2e` | Browser end-to-end flow (Playwright) against a dev server with the development login |
+| `pnpm test:e2e` | Browser end-to-end flow (Playwright). Starts its own dev server in `.next-e2e` so it never collides with a production build |
 
 ## Deploying to Vercel
 

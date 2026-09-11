@@ -76,7 +76,7 @@ Integer minor units with explicit currency. `ledger_entry` is append-only and id
 
 ## Localization
 
-Server components call `getT()` from `src/server/i18n.ts`; client components use `useT()` from the `I18nProvider` mounted in the root layout. Localized enum labels (statuses, verification levels, contribution roles, confidentiality copy) live in the dictionaries; `StatusBadge`, `VerificationBadge` and `ConfidentialityBadge` are server components in `src/components/ui/status-badge.tsx` so the dictionary never needs to reach client bundles through them. Admin pages and e-mail templates are English only in V1.
+Server components call `getT()` from `src/server/i18n.ts`; client components use `useT()` from the `I18nProvider` mounted in the root layout. Localized enum labels (statuses, verification levels, contribution roles, confidentiality copy) live in the dictionaries; `StatusBadge`, `VerificationBadge` and `ConfidentialityBadge` are server components in `src/components/ui/status-badge.tsx` so the dictionary never needs to reach client bundles through them. E-mails, in-app and SMS notifications are rendered in the recipient's account language (English or Swedish). The admin console and the professional listing/competence editors remain English only in V1.
 
 ## Renaming
 

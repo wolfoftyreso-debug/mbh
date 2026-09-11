@@ -2,13 +2,15 @@ import { redirect } from "next/navigation";
 import { requireViewer } from "@/server/auth/session";
 import { PageHeader } from "@/components/ui/card";
 import { ProfileForm } from "@/components/professional/profile-form";
+import { getT } from "@/server/i18n";
 
 export default async function OnboardingPage() {
   const viewer = await requireViewer();
   if (viewer.professionalProfileId) redirect("/professional/profile");
+  const { t } = await getT();
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader eyebrow="Become a professional" title="Create your professional profile" description="Your profile is private until you publish it. Everything you enter is self-declared until the platform verifies it. Next you will add languages, expertise and credentials." />
+      <PageHeader eyebrow={t("pro.onb.eyebrow")} title={t("pro.onb.title")} description={t("pro.onb.lead")} />
       <ProfileForm mode="create" initial={{ displayName: viewer.name, title: "", bio: "", country: "", region: "", yearsExperience: "" }} />
     </div>
   );

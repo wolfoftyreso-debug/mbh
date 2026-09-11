@@ -6,8 +6,8 @@ import { defineConfig } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "tests/e2e",
-  timeout: 240_000,
-  expect: { timeout: 15_000 },
+  timeout: 420_000,
+  expect: { timeout: 30_000 },
   retries: 0,
   workers: 1,
   reporter: [["list"]],
@@ -22,7 +22,7 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: "APP_URL=http://127.0.0.1:3100 BETTER_AUTH_URL=http://127.0.0.1:3100 AUTH_DEV_LOGIN=true pnpm exec next dev -p 3100",
+        command: "NEXT_DIST_DIR=.next-e2e APP_URL=http://127.0.0.1:3100 BETTER_AUTH_URL=http://127.0.0.1:3100 AUTH_DEV_LOGIN=true pnpm exec next dev -p 3100",
         url: "http://127.0.0.1:3100/api/health",
         timeout: 180_000,
         reuseExistingServer: true,

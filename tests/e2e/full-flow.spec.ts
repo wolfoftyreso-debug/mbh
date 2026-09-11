@@ -8,7 +8,8 @@ async function signIn(browser: Browser, email: string): Promise<Page> {
   const page = await context.newPage();
   await page.goto("/sign-in");
   // Wait for hydration so the dev login form is handled by React, not a native submit.
-  await page.locator('form[data-ready="true"]').waitFor({ timeout: 60_000 });
+  // A cold dev server compiles the page on first request; allow generous time for hydration.
+  await page.locator('form[data-ready="true"]').waitFor({ timeout: 180_000 });
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();

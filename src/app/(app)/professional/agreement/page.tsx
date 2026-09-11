@@ -3,13 +3,14 @@ import { hasAcceptedAgreement } from "@/server/domain/professionals/service";
 import { AGREEMENT_VERSIONS, brand } from "@/lib/config/brand";
 import { PageHeader, Alert } from "@/components/ui/card";
 import { AcceptAgreementButton } from "@/components/professional/accept-agreement";
+import { getT } from "@/server/i18n";
 
 export default async function AgreementPage() {
   const viewer = await requireProfessional();
-  const accepted = await hasAcceptedAgreement(viewer.userId, "PROFESSIONAL_CONFIDENTIALITY");
+  const [accepted, { t }] = await Promise.all([hasAcceptedAgreement(viewer.userId, "PROFESSIONAL_CONFIDENTIALITY"), getT()]);
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader eyebrow={`Version ${AGREEMENT_VERSIONS.PROFESSIONAL_CONFIDENTIALITY}`} title="Professional confidentiality agreement" />
+      <PageHeader eyebrow={t("pro.agreement.version", { v: AGREEMENT_VERSIONS.PROFESSIONAL_CONFIDENTIALITY })} title={t("pro.agreement.title")} />
       <div className="space-y-4 rounded-lg border border-line bg-surface p-6 text-sm text-ink-2">
         <p>As a professional on {brand.name} you receive material that customers have not published and may consider commercially sensitive, personal or proprietary. By accepting this agreement you undertake, for every assignment you work on, that customer materials will not be:</p>
         <ul className="list-disc space-y-1 pl-5">
@@ -25,7 +26,7 @@ export default async function AgreementPage() {
         <p>You confirm that you will genuinely perform any service you sign for and that you will never sign a version you have not personally reviewed.</p>
         <p className="text-xs text-ink-3">Assignment-specific NDAs may be added by customers in the future and will be recorded separately.</p>
       </div>
-      <div className="mt-6">{accepted ? <Alert tone="success">You have accepted the current version of this agreement.</Alert> : <AcceptAgreementButton />}</div>
+      <div className="mt-6">{accepted ? <Alert tone="success">{t("pro.agreement.accepted")}</Alert> : <AcceptAgreementButton />}</div>
     </div>
   );
 }

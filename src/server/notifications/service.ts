@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { notificationPreferences, notifications, users } from "@/server/db/schema";
 import { getEmailProvider } from "@/server/email";
-import { renderEmail, type EmailTemplateKey } from "@/server/email/templates";
+import { renderEmail, type EmailLocale, type EmailTemplateKey } from "@/server/email/templates";
 import { getSmsProvider } from "@/server/sms";
 import { logger } from "@/server/logger";
 
@@ -42,6 +42,31 @@ const TYPES: Record<NotificationType, TypeConfig> = {
   ORGANIZATION_INVITE: { essential: false, sms: false, inAppTitle: () => "Organization", inAppBody: (v) => `You were added to ${v.organizationName}.`, link: () => "/organizations" },
 };
 
+const SV: Partial<Record<NotificationType, { title: (v: Record<string, string | undefined>) => string; body: (v: Record<string, string | undefined>) => string }>> = {
+  WELCOME: { title: () => "Välkommen", body: () => "Ditt konto är klart." },
+  ASSIGNMENT_RECEIVED: { title: () => "Uppdrag skapat", body: (v) => `”${v.title}” är nu ${v.statusLabel ?? "öppet"}.` },
+  PROFESSIONAL_INVITED: { title: () => "Du har bjudits in", body: (v) => `Inbjudan till ”${v.title}”.` },
+  OFFER_RECEIVED: { title: () => "Offert mottagen", body: (v) => `${v.professionalName} skickade en offert: ${v.price}.` },
+  ASSIGNMENT_ACCEPTED: { title: () => "Uppdrag accepterat", body: (v) => `”${v.title}” är redo att starta.` },
+  NEW_MESSAGE: { title: () => "Nytt meddelande", body: (v) => `${v.senderName} skrev i ”${v.title}”.` },
+  DELIVERY_RECEIVED: { title: () => "Version levererad", body: (v) => `Version ${v.version} av ”${v.title}” är klar att granska.` },
+  REVISION_REQUESTED: { title: () => "Revidering begärd", body: (v) => `Ändringar begärda i ”${v.title}”.` },
+  FINAL_VERSION_READY: { title: () => "Klar för signering", body: (v) => `Version ${v.version} av ”${v.title}” väntar på signering.` },
+  SIGNATURE_COMPLETED: { title: () => "Signerat", body: (v) => `${v.professionalName} signerade version ${v.version}.` },
+  PAYMENT_RECEIPT: { title: () => "Betalning mottagen", body: (v) => `${v.amount} för ”${v.title}”.` },
+  PAYOUT_NOTIFICATION: { title: () => "Utbetalning", body: (v) => `${v.amount} ${v.status}.` },
+  DISPUTE_UPDATE: { title: () => "Uppdatering om tvist", body: (v) => `Tvisten om ”${v.title}” är ${v.status}.` },
+  VERIFICATION_UPDATE: { title: () => "Uppdaterad verifiering", body: (v) => `Status: ${v.status}.` },
+  SECURITY_ALERT: { title: () => "Säkerhetsmeddelande", body: (v) => v.message ?? "" },
+  ORGANIZATION_INVITE: { title: () => "Organisation", body: (v) => `Du lades till i ${v.organizationName}.` },
+};
+
+function inApp(type: NotificationType, locale: EmailLocale, vars: Record<string, string | undefined>): { title: string; body: string } {
+  const cfg = TYPES[type];
+  if (locale === "sv" && SV[type]) return { title: SV[type]!.title(vars), body: SV[type]!.body(vars) };
+  return { title: cfg.inAppTitle(vars), body: cfg.inAppBody(vars) };
+}
+
 export const NOTIFICATION_TYPES = Object.keys(TYPES) as NotificationType[];
 export const CONFIGURABLE_TYPES = NOTIFICATION_TYPES.filter((t) => !TYPES[t].essential);
 
@@ -57,8 +82,10 @@ async function channelEnabled(userId: string, type: NotificationType, channel: "
 
 export async function notify(userId: string, type: NotificationType, vars: Record<string, string | undefined>): Promise<void> {
   const cfg = TYPES[type];
-  const [user] = await db.select({ email: users.email, phone: users.phone, phoneVerified: users.phoneVerified, deletedAt: users.deletedAt }).from(users).where(eq(users.id, userId)).limit(1);
+  const [user] = await db.select({ email: users.email, phone: users.phone, phoneVerified: users.phoneVerified, deletedAt: users.deletedAt, locale: users.locale }).from(users).where(eq(users.id, userId)).limit(1);
   if (!user || user.deletedAt) return;
+  const locale: EmailLocale = user.locale === "sv" ? "sv" : "en";
+  const text = inApp(type, locale, vars);
 
   // In-app
   if (await channelEnabled(userId, type, "IN_APP")) {
@@ -66,8 +93,8 @@ export async function notify(userId: string, type: NotificationType, vars: Recor
       userId,
       type,
       channel: "IN_APP",
-      title: cfg.inAppTitle(vars),
-      body: cfg.inAppBody(vars),
+      title: text.title,
+      body: text.body,
       link: cfg.link(vars),
       status: "SENT",
       essential: cfg.essential,
@@ -78,7 +105,7 @@ export async function notify(userId: string, type: NotificationType, vars: Recor
 
   // E-mail
   if (await channelEnabled(userId, type, "EMAIL")) {
-    const rendered = renderEmail(type, vars);
+    const rendered = renderEmail(type, vars, locale);
     const [row] = await db
       .insert(notifications)
       .values({ userId, type, channel: "EMAIL", title: rendered.subject, body: "", link: cfg.link(vars), status: "PENDING", essential: cfg.essential })
@@ -94,10 +121,10 @@ export async function notify(userId: string, type: NotificationType, vars: Recor
 
   // SMS: secondary channel, only for selected types and verified phone numbers
   if (cfg.sms && user.phone && user.phoneVerified && (await channelEnabled(userId, type, "SMS"))) {
-    const body = `${cfg.inAppTitle(vars)}: ${cfg.inAppBody(vars)}`.slice(0, 300);
+    const body = `${text.title}: ${text.body}`.slice(0, 300);
     const [row] = await db
       .insert(notifications)
-      .values({ userId, type, channel: "SMS", title: cfg.inAppTitle(vars), body: "", status: "PENDING", essential: cfg.essential })
+      .values({ userId, type, channel: "SMS", title: text.title, body: "", status: "PENDING", essential: cfg.essential })
       .returning({ id: notifications.id });
     try {
       await getSmsProvider().send(user.phone, body);

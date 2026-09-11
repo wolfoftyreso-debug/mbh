@@ -33,6 +33,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Lets test runners use a separate build directory so a production build cannot clobber a running dev server.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   reactStrictMode: true,
   poweredByHeader: false,
   serverExternalPackages: ["postgres"],

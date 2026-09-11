@@ -8,6 +8,7 @@ import { ClaimBadge } from "@/components/ui/badge";
 import { VerificationBadge } from "@/components/ui/status-badge";
 import { CredentialsManager, ExpertiseManager, IdentityForm, LanguagesManager, HostedIdentityButton } from "@/components/professional/competence-managers";
 import { identityProviderInfo } from "@/server/identity/service";
+import { getT } from "@/server/i18n";
 import { humanize, formatDate } from "@/lib/utils";
 
 export default async function CredentialsPage() {
@@ -15,26 +16,27 @@ export default async function CredentialsPage() {
   const data = await getOwnProfile(viewer);
   if (!data) return null;
   const identity = identityProviderInfo();
+  const { t, locale } = await getT();
   const [langs, doms] = await Promise.all([db.select().from(languages).where(eq(languages.active, true)).orderBy(asc(languages.name)), db.select().from(domains).where(eq(domains.active, true)).orderBy(asc(domains.path))]);
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <PageHeader title="Competence and verification" description={<span className="inline-flex items-center gap-2">Current status: <VerificationBadge status={data.profile.verificationStatus} /></span>} />
+      <PageHeader title={t("pro.comp.title")} description={<span className="inline-flex items-center gap-2">{t("pro.comp.status")} <VerificationBadge status={data.profile.verificationStatus} /></span>} />
       <Card>
-        <CardHeader title="Identity verification" description={identity.hosted ? "Verified through a hosted identity provider (document and selfie). The platform receives only the verdict and your legal name." : "Upload an identity document. Reviewed by platform staff, stored privately, deleted after 90 days."} />
+        <CardHeader title={t("pro.comp.identity.title")} description={identity.hosted ? t("pro.comp.identity.hosted") : t("pro.comp.identity.manual")} />
         <CardBody>
-          {data.profile.identityVerifiedAt ? <p className="text-sm text-accent">Identity verified on {formatDate(data.profile.identityVerifiedAt)}.</p> : data.identity?.status === "PENDING_REVIEW" ? <p className="text-sm text-ink-2">{identity.hosted ? "Your identity verification is in progress with the provider." : "Your identity document is under review."}</p> : identity.hosted ? <HostedIdentityButton rejectedNote={data.identity?.status === "REJECTED" ? data.identity.notes : null} /> : <IdentityForm rejectedNote={data.identity?.status === "REJECTED" ? data.identity.notes : null} />}
+          {data.profile.identityVerifiedAt ? <p className="text-sm text-accent">{t("pro.comp.identity.verifiedOn", { date: formatDate(data.profile.identityVerifiedAt, locale === "sv" ? "sv-SE" : "en-GB") })}</p> : data.identity?.status === "PENDING_REVIEW" ? <p className="text-sm text-ink-2">{identity.hosted ? t("pro.comp.identity.pendingHosted") : t("pro.comp.identity.pending")}</p> : identity.hosted ? <HostedIdentityButton rejectedNote={data.identity?.status === "REJECTED" ? data.identity.notes : null} /> : <IdentityForm rejectedNote={data.identity?.status === "REJECTED" ? data.identity.notes : null} />}
         </CardBody>
       </Card>
       <Card>
-        <CardHeader title="Languages" description="Speaking a language is not the same as being qualified to edit it professionally. Mark editorial capability only where you work as a professional editor." />
+        <CardHeader title={t("pro.comp.languages.title")} description={t("pro.comp.languages.desc")} />
         <CardBody><LanguagesManager current={data.languages.map((l) => ({ code: l.pl.languageCode, name: l.name, level: l.pl.level, editorialCapable: l.pl.editorialCapable, status: l.pl.status }))} languages={langs.map((l) => ({ code: l.code, name: l.name }))} /></CardBody>
       </Card>
       <Card>
-        <CardHeader title="Domain expertise" description="Claims are self-declared until the platform reviews evidence. Describe your evidence to request review." />
+        <CardHeader title={t("pro.comp.expertise.title")} description={t("pro.comp.expertise.desc")} />
         <CardBody><ExpertiseManager current={data.expertise.map((e) => ({ id: e.claim.id, domainName: e.domainName, years: e.claim.yearsExperience, status: e.claim.status, description: e.claim.description }))} domains={doms.map((d) => ({ id: d.id, name: d.name, depth: d.depth }))} /></CardBody>
       </Card>
       <Card>
-        <CardHeader title="Credentials" description="Education, certifications, memberships, employment, trade qualifications. Attach documentation to request verification." />
+        <CardHeader title={t("pro.comp.credentials.title")} description={t("pro.comp.credentials.desc")} />
         <CardBody>
           {data.credentials.length ? (
             <ul className="mb-4 space-y-2">
