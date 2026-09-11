@@ -1,24 +1,51 @@
 "use client";
 import { useState } from "react";
-import { exportDataAction, markNotificationsReadAction, requestDeletionAction, revokeAllSessionsAction, updateAccountAction, updateNotificationPreferencesAction } from "@/server/actions/settings";
+import { exportDataAction, markNotificationsReadAction, requestDeletionAction, requestPhoneCodeAction, revokeAllSessionsAction, updateAccountAction, updateNotificationPreferencesAction, verifyPhoneCodeAction } from "@/server/actions/settings";
 import { useAction } from "@/components/common/use-action";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Select } from "@/components/ui/form";
 import { Alert } from "@/components/ui/card";
 import { humanize } from "@/lib/utils";
 
+export function PhoneVerification({ phone, verified }: { phone: string; verified: boolean }) {
+  const [number, setNumber] = useState(phone);
+  const [code, setCode] = useState("");
+  const [devCode, setDevCode] = useState<string | null>(null);
+  const request = useAction(requestPhoneCodeAction, { onSuccess: (d) => setDevCode(d?.devCode ?? null) });
+  const verify = useAction(verifyPhoneCodeAction, { onSuccess: () => { setCode(""); setDevCode(null); } });
+  return (
+    <div className="space-y-3 rounded-lg border border-line bg-surface p-4">
+      <div className="flex items-center justify-between"><p className="text-sm font-medium">Mobile number</p>{verified && phone ? <span className="text-xs text-accent">Verified</span> : phone ? <span className="text-xs text-ink-3">Not verified</span> : null}</div>
+      <p className="text-xs text-ink-3">Optional. Used only for security notices and high-priority assignment notifications after verification.</p>
+      <div className="flex flex-wrap gap-2">
+        <Input value={number} onChange={(e) => setNumber(e.target.value)} placeholder="+46701234567" className="w-56" />
+        <Button size="sm" variant="outline" disabled={request.pending || !number.trim()} onClick={() => request.run(number)}>{request.pending ? "Sending…" : "Send code"}</Button>
+      </div>
+      {request.error ? <p className="text-xs text-danger">{request.error}</p> : null}
+      {request.success ? (
+        <div className="flex flex-wrap gap-2">
+          <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="6-digit code" inputMode="numeric" className="w-40" />
+          <Button size="sm" disabled={verify.pending || code.trim().length !== 6} onClick={() => verify.run(code)}>Verify</Button>
+          {devCode ? <span className="text-xs text-ink-3">Development mode: code {devCode}</span> : null}
+        </div>
+      ) : null}
+      {verify.error ? <p className="text-xs text-danger">{verify.error}</p> : null}
+      {verify.success ? <p className="text-xs text-accent">Number verified.</p> : null}
+    </div>
+  );
+}
+
 export function AccountForm({ initial }: { initial: { name: string; email: string; locale: string; timezone: string; phone: string } }) {
   const [f, setF] = useState(initial);
   const { run, pending, error, success } = useAction(updateAccountAction);
   return (
-    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); run({ name: f.name, locale: f.locale as "en", timezone: f.timezone, phone: f.phone || null }); }}>
+    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); run({ name: f.name, locale: f.locale as "en", timezone: f.timezone }); }}>
       <Field label="Name"><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></Field>
       <Field label="E-mail" hint="Managed by your sign-in provider."><Input value={f.email} disabled /></Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Language"><Select value={f.locale} onChange={(e) => setF({ ...f, locale: e.target.value })}><option value="en">English</option><option value="sv">Svenska</option></Select></Field>
         <Field label="Time zone"><Input value={f.timezone} onChange={(e) => setF({ ...f, timezone: e.target.value })} /></Field>
       </div>
-      <Field label="Mobile number" hint="Optional. Used only for security and high-priority notifications after verification."><Input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="+46…" /></Field>
       {error ? <Alert tone="danger">{error}</Alert> : null}
       {success ? <Alert tone="success">Saved.</Alert> : null}
       <Button type="submit" disabled={pending}>Save</Button>

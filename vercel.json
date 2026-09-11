@@ -2,7 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "regions": ["fra1"],
+  "crons": [
+    { "path": "/api/cron/housekeeping", "schedule": "0 3 * * *" },
+    { "path": "/api/cron/retention", "schedule": "30 3 * * *" },
+    { "path": "/api/cron/publication-monitor", "schedule": "0 4 * * *" }
+  ],
   "functions": {
+    "src/app/api/cron/[job]/route.ts": { "maxDuration": 300 },
     "src/app/api/uploads/route.ts": { "maxDuration": 60 },
     "src/app/api/files/[id]/route.ts": { "maxDuration": 30 }
   }

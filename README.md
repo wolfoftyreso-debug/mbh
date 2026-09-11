@@ -38,6 +38,8 @@ Demo accounts (when `AUTH_DEV_LOGIN=true` and `SEED_DEMO=true`, password `humana
 | `pnpm db:generate` | Generate a migration from schema changes |
 | `pnpm db:migrate` | Apply migrations |
 | `pnpm db:seed` | Seed reference data (+ demo with `SEED_DEMO=true`) |
+| `pnpm lint` | ESLint |
+| `pnpm test:integration` | End-to-end domain flow against the configured database |
 
 ## Deploying to Vercel
 
@@ -47,6 +49,8 @@ Demo accounts (when `AUTH_DEV_LOGIN=true` and `SEED_DEMO=true`, password `humana
 4. Run `pnpm db:migrate && pnpm db:seed` against the production database (once per release with schema changes).
 5. Set `BOOTSTRAP_ADMIN_EMAILS` to promote the first administrator on sign-in.
 6. Leave `AUTH_DEV_LOGIN` unset in production (it is hard-disabled for production builds regardless).
+7. Set `CRON_SECRET`. `vercel.json` schedules three daily jobs against `/api/cron/{housekeeping,retention,publication-monitor}`; any scheduler can call them with `Authorization: Bearer $CRON_SECRET`.
+8. Set `SMS_PROVIDER=twilio` and the Twilio variables to enable phone verification and SMS notifications (SMS is only sent to verified numbers).
 
 ## Documentation
 

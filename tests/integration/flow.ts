@@ -22,6 +22,11 @@ import { sendMessage, listMessages } from "@/server/domain/messages/service";
 import { grantContentAccess } from "@/server/domain/admin/service";
 import { aiService } from "@/server/ai/service";
 import { AiPolicyError } from "@/server/ai/policy";
+import { runRetention } from "@/server/jobs/retention";
+import { runHousekeeping } from "@/server/jobs/housekeeping";
+import { runPublicationMonitor } from "@/server/jobs/publication-monitor";
+import { attachments, publishedWorks, offers } from "@/server/db/schema";
+import { getStorage } from "@/server/storage";
 
 async function viewerFor(email: string): Promise<Viewer> {
   const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
@@ -212,6 +217,31 @@ async function main() {
   assert.ok(search.items.some((i) => i.slug === "eva-svensson"));
   const domainSearch = await searchProfessionals({ domain: "automotive" });
   assert.ok(domainSearch.items.some((i) => i.slug === "johan-karlsson"));
+
+  // 13. Jobs: publication monitor with a fake fetcher, housekeeping expiry, retention of expired files
+  const [work] = await db.select().from(publishedWorks).where(eq(publishedWorks.url, "https://example.com/dsg"));
+  assert.ok(work);
+  const monitor = await runPublicationMonitor({ intervalDays: 0, fetcher: async () => "<html><body><p>Byt olja i DSG-lådan var 6 000 mil, annars riskerar mekatroniken att skadas.</p></body></html>" });
+  assert.ok(monitor.checked >= 1);
+  const [checked] = await db.select().from(publishedWorks).where(eq(publishedWorks.id, work.id));
+  assert.equal(checked.lastVerifiedState, "MATCHES");
+  const changed = await runPublicationMonitor({ intervalDays: 0, fetcher: async () => "<p>something else</p>" });
+  assert.ok(changed.changed >= 1);
+
+  await db.update(offers).set({ expiresAt: new Date(Date.now() - 1000), status: "PENDING" }).where(eq(offers.id, offerId));
+  const hk = await runHousekeeping();
+  assert.ok(hk.offersExpired >= 1);
+  const [expiredOffer] = await db.select({ status: offers.status }).from(offers).where(eq(offers.id, offerId));
+  assert.equal(expiredOffer.status, "EXPIRED");
+
+  const storage = getStorage();
+  await storage.put("retention-test-key", new Uint8Array([1, 2, 3]), "application/octet-stream");
+  const [att] = await db.insert(attachments).values({ ownerUserId: customer.userId, purpose: "VERIFICATION_DOCUMENT", storageProvider: storage.name, storageKey: "retention-test-key", filename: "id.pdf", mimeType: "application/pdf", sizeBytes: 3, sha256: "abc", retentionUntil: new Date(Date.now() - 1000) }).returning({ id: attachments.id });
+  const ret = await runRetention();
+  assert.ok(ret.filesDeleted >= 1);
+  const [deleted] = await db.select({ deletedAt: attachments.deletedAt }).from(attachments).where(eq(attachments.id, att.id));
+  assert.ok(deleted.deletedAt);
+  assert.equal(await storage.get("retention-test-key"), null);
 
   console.log("FLOW OK");
   process.exit(0);

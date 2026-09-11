@@ -42,6 +42,7 @@ const schema = z.object({
   IP_HASH_SALT: z.string().default("development-salt"),
   BOOTSTRAP_ADMIN_EMAILS: z.string().default(""),
   RECORD_ID_PREFIX: z.string().default("HA"),
+  CRON_SECRET: z.string().optional(),
 });
 
 function load() {

@@ -10,15 +10,14 @@ import { CONFIGURABLE_TYPES, type NotificationType } from "@/server/notification
 import { audit } from "@/server/audit/log";
 import { exportUserData, requestAccountDeletion, revokeAllSessions } from "@/server/domain/privacy/service";
 
-const accountSchema = z.object({ name: z.string().trim().min(1).max(120), locale: z.enum(["en", "sv"]).default("en"), timezone: z.string().max(60).default("Europe/Stockholm"), phone: z.string().max(30).nullable().default(null) });
+const accountSchema = z.object({ name: z.string().trim().min(1).max(120), locale: z.enum(["en", "sv"]).default("en"), timezone: z.string().max(60).default("Europe/Stockholm") });
 
 export async function updateAccountAction(payload: z.input<typeof accountSchema>): Promise<ActionResult> {
   const viewer = await requireViewer();
   return safeAction("updateAccount", async () => {
     const p = accountSchema.parse(payload);
-    const [current] = await db.select({ phone: users.phone }).from(users).where(eq(users.id, viewer.userId)).limit(1);
-    await db.update(users).set({ name: p.name, locale: p.locale, timezone: p.timezone, phone: p.phone, phoneVerified: current?.phone === p.phone ? undefined : false }).where(eq(users.id, viewer.userId));
-    await audit({ actorType: "USER", actorUserId: viewer.userId, action: "PROFILE_UPDATED", entityType: "user", entityId: viewer.userId, metadata: { fields: ["name", "locale", "timezone", "phone"] } });
+    await db.update(users).set({ name: p.name, locale: p.locale, timezone: p.timezone }).where(eq(users.id, viewer.userId));
+    await audit({ actorType: "USER", actorUserId: viewer.userId, action: "PROFILE_UPDATED", entityType: "user", entityId: viewer.userId, metadata: { fields: ["name", "locale", "timezone"] } });
     revalidatePath("/settings");
     return undefined;
   });
@@ -67,6 +66,22 @@ export async function requestDeletionAction(): Promise<ActionResult> {
   return safeAction("requestDeletion", async () => {
     await requestAccountDeletion(viewer);
     revalidatePath("/settings/privacy");
+    return undefined;
+  });
+}
+
+export async function requestPhoneCodeAction(phone: string): Promise<ActionResult<{ devCode: string | null }>> {
+  const viewer = await requireViewer();
+  const { requestPhoneCode } = await import("@/server/domain/phone/service");
+  return safeAction("requestPhoneCode", () => requestPhoneCode(viewer.userId, phone));
+}
+
+export async function verifyPhoneCodeAction(code: string): Promise<ActionResult> {
+  const viewer = await requireViewer();
+  const { verifyPhoneCode } = await import("@/server/domain/phone/service");
+  return safeAction("verifyPhoneCode", async () => {
+    await verifyPhoneCode(viewer.userId, code);
+    revalidatePath("/settings");
     return undefined;
   });
 }

@@ -58,6 +58,18 @@ Language competence (`professional_language`: level + editorial capability) and 
 
 Integer minor units with explicit currency. `ledger_entry` is append-only and idempotent by key; balances are sums. Capture → escrow; completion → platform fee + professional earning; refund; payout. Provider interfaces: `PaymentProvider`, `PayoutProvider`, `InvoiceProvider` (`src/server/finance/providers`). The Stripe adapter uses Checkout Sessions and signed webhooks; the manual adapter supports off-platform settlement.
 
+## Scheduled jobs
+
+`src/server/jobs/*` are invoked through `/api/cron/[job]` (bearer `CRON_SECRET`, timing-safe compare):
+
+- **housekeeping** — expires pending offers past `expires_at`, expires invitations older than 30 days, prunes rate-limit buckets and expired verification codes.
+- **retention** — deletes file bytes past `retention_until` (verification documents, strictly confidential uploads) and, for STRICT_CONFIDENTIAL assignments completed or cancelled more than `strict_confidential_retention_days` ago, clears version content (status DELETED, hash kept, allowed by the immutability trigger) and posts a system message. Ledger, audit and record metadata are untouched.
+- **publication-monitor** — re-checks `published_work` URLs weekly: fetches the page (10 s timeout, 2 MB cap), strips markup and tests whether the signed canonical text appears verbatim → MATCHES / CHANGED / UNREACHABLE. The record itself never changes.
+
+## Phone verification
+
+`src/server/domain/phone/service.ts` stores a hashed one-time code (10 min) in Better Auth's `verification` table and sends it through the SMS adapter. Only verified numbers receive SMS notifications. In development with the noop provider the code is returned to the UI.
+
 ## Renaming
 
 `src/lib/config/brand.ts` and `NEXT_PUBLIC_BRAND_NAME` / `RECORD_ID_PREFIX` control naming. No feature code hard-codes the product name.
