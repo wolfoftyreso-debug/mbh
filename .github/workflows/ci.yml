@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: humanauth
+          POSTGRES_PASSWORD: humanauth
+          POSTGRES_DB: humanauth
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U humanauth" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://humanauth:humanauth@localhost:5432/humanauth
+      BETTER_AUTH_SECRET: ci-secret-ci-secret-ci-secret-0123456789
+      AUTH_DEV_LOGIN: "true"
+      APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm exec eslint "src/**/*.{ts,tsx}" "tests/**/*.ts"
+      - run: pnpm test
+      - run: pnpm db:migrate
+      - run: SEED_DEMO=true pnpm db:seed
+      - run: pnpm exec tsx tests/integration/flow.ts
+      - run: pnpm build
