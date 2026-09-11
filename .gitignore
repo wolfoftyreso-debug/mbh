@@ -9,3 +9,5 @@ out
 next-env.d.ts
 .vercel
 coverage
+test-results
+playwright-report

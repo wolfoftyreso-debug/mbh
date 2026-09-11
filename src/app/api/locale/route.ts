@@ -11,7 +11,10 @@ export async function GET(req: Request) {
   const locale = url.searchParams.get("l");
   const next = url.searchParams.get("next") ?? "/";
   const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
-  const res = NextResponse.redirect(new URL(safeNext, url.origin), 303);
+  // Redirect on the origin the browser actually used (behind proxies the parsed URL may differ).
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? url.host;
+  const proto = req.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "");
+  const res = NextResponse.redirect(new URL(safeNext, `${proto}://${host}`), 303);
   if (!isLocale(locale)) return res;
   res.cookies.set(LOCALE_COOKIE, locale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax", httpOnly: false });
   const viewer = await getViewer();

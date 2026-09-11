@@ -87,7 +87,7 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          await onUserCreated(user.id, user.email);
+          await onUserCreated(user.id, user.email, Boolean(user.emailVerified));
         },
       },
     },

@@ -6,9 +6,11 @@ import { audit } from "@/server/audit/log";
 import { logger } from "@/server/logger";
 
 /** Runs after Better Auth inserts a user row. */
-export async function onUserCreated(userId: string, email: string): Promise<void> {
+export async function onUserCreated(userId: string, email: string, emailVerified = false): Promise<void> {
   try {
     const normalized = email.toLowerCase();
+    const { attachPendingMemberships } = await import("@/server/domain/organizations/service");
+    await attachPendingMemberships(userId, normalized, emailVerified);
     if (env.bootstrapAdminEmails.includes(normalized)) {
       await db.update(users).set({ platformRole: "ADMIN" }).where(eq(users.id, userId));
     }

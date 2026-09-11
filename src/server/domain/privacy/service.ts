@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db";
-import { agreementAcceptances, assignments, authorshipRecords, credentials, expertiseClaims, ledgerEntries, messages, notificationPreferences, notifications, organizationMembers, privacyRequests, professionalLanguages, professionalProfiles, reviews, serviceListings, sessions, users } from "@/server/db/schema";
+import { accounts, agreementAcceptances, assignments, authorshipRecords, credentials, expertiseClaims, ledgerEntries, messages, notificationPreferences, notifications, organizationMembers, privacyRequests, professionalLanguages, professionalProfiles, reviews, serviceListings, sessions, users } from "@/server/db/schema";
 import { audit } from "@/server/audit/log";
 import { ConflictError } from "@/server/security/errors";
 import type { Viewer } from "@/server/auth/session";
@@ -66,6 +66,8 @@ export async function executeAccountDeletion(adminUserId: string, userId: string
   await db.transaction(async (tx) => {
     await tx.update(users).set({ name: "Deleted user", email: anonymizedEmail, image: null, phone: null, deletedAt: new Date() }).where(eq(users.id, userId));
     await tx.delete(sessions).where(eq(sessions.userId, userId));
+    await tx.delete(accounts).where(eq(accounts.userId, userId));
+    await tx.update(organizationMembers).set({ removedAt: new Date() }).where(eq(organizationMembers.userId, userId));
     await tx.update(professionalProfiles).set({ publishedAt: null, bio: "", title: "", displayName: "Former professional", externalUrls: [], photoAttachmentId: null }).where(eq(professionalProfiles.userId, userId));
     await tx.update(privacyRequests).set({ status: "COMPLETED", completedAt: new Date() }).where(and(eq(privacyRequests.userId, userId), eq(privacyRequests.type, "ACCOUNT_DELETION")));
     await tx.delete(notifications).where(eq(notifications.userId, userId));

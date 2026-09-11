@@ -88,7 +88,10 @@ export async function authorizeFileRead(viewer: Viewer | null, attachmentId: str
     if (!can(ctx, "view_content")) throw new AuthorizationError("Content access requires an explicit grant");
     return { attachment: att, public: false };
   }
-  if (att.ownerUserId === viewer.userId || viewer.isAdmin) return { attachment: att, public: false };
+  if (att.ownerUserId === viewer.userId) return { attachment: att, public: false };
+  // Admins only see portfolio material and profile photos without a grant; unattached
+  // customer uploads (source material, recordings) stay private to their owner.
+  if (viewer.isAdmin && att.purpose === "PORTFOLIO") return { attachment: att, public: false };
   throw new NotFoundError();
 }
 

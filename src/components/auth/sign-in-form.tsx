@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
@@ -14,6 +14,8 @@ export function SignInForm({ providers, next, error }: { providers: { google: bo
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [mode, setMode] = useState<"in" | "up">("in");
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
 
   async function social(provider: "google" | "apple" | "twitter") {
     setBusy(provider);
@@ -43,7 +45,7 @@ export function SignInForm({ providers, next, error }: { providers: { google: bo
       {providers.x ? <Button variant="outline" size="lg" className="w-full" onClick={() => social("twitter")} disabled={busy !== null}>{t("signin.x")}</Button> : null}
       {!anyProvider && !providers.devLogin ? <Alert tone="warn">{t("signin.noProviders")}</Alert> : null}
       {providers.devLogin ? (
-        <form onSubmit={dev} className="space-y-3 rounded-lg border border-dashed border-line-strong bg-surface p-4">
+        <form onSubmit={dev} data-ready={ready ? "true" : "false"} className="space-y-3 rounded-lg border border-dashed border-line-strong bg-surface p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-ink-3">{t("signin.dev")}</p>
           {mode === "up" ? (
             <Field label={t("signin.name")}>
@@ -51,10 +53,10 @@ export function SignInForm({ providers, next, error }: { providers: { google: bo
             </Field>
           ) : null}
           <Field label={t("signin.email")}>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+            <Input type="email" name="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
           </Field>
           <Field label={t("signin.password")}>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="current-password" />
+            <Input type="password" name="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="current-password" />
           </Field>
           <div className="flex items-center justify-between gap-2">
             <Button type="submit" disabled={busy !== null}>{mode === "in" ? t("signin.submit") : t("signin.create")}</Button>

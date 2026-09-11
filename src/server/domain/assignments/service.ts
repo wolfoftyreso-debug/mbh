@@ -403,13 +403,15 @@ export async function acceptOffer(ctx: AssignmentAuthContext, offerId: string): 
   if (!profile) throw new ValidationError("Professional profile not found");
 
   await db.transaction(async (tx) => {
-    const isPrimary = !ctx.assignment.primaryProfessionalUserId;
-    await tx.update(offers).set({ status: "ACCEPTED", respondedAt: new Date() }).where(eq(offers.id, offerId));
+    const [locked] = await tx.select({ primary: assignments.primaryProfessionalUserId, agreed: assignments.agreedPriceMinor }).from(assignments).where(eq(assignments.id, ctx.assignment.id)).for("update");
+    const isPrimary = !locked?.primary;
+    const accepted = await tx.update(offers).set({ status: "ACCEPTED", respondedAt: new Date() }).where(and(eq(offers.id, offerId), eq(offers.status, "PENDING"))).returning({ id: offers.id });
+    if (!accepted.length) throw new ConflictError("Offer is no longer pending");
     if (isPrimary) {
       await tx.update(offers).set({ status: "DECLINED", respondedAt: new Date() }).where(and(eq(offers.assignmentId, ctx.assignment.id), eq(offers.status, "PENDING"), sql`${offers.id} <> ${offerId}`));
       await tx.update(assignments).set({ primaryProfessionalUserId: o.professionalUserId, acceptedOfferId: offerId, agreedPriceMinor: o.priceMinor, currency: o.currency }).where(eq(assignments.id, ctx.assignment.id));
     } else {
-      await tx.update(assignments).set({ agreedPriceMinor: (ctx.assignment.agreedPriceMinor ?? 0) + o.priceMinor }).where(eq(assignments.id, ctx.assignment.id));
+      await tx.update(assignments).set({ agreedPriceMinor: (locked?.agreed ?? 0) + o.priceMinor }).where(eq(assignments.id, ctx.assignment.id));
     }
     await tx
       .insert(assignmentParticipants)

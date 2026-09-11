@@ -55,7 +55,7 @@ export default async function ProfessionalProfilePage({ params }: { params: Prom
   };
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <div className="flex flex-col gap-6 md:flex-row md:items-start">
         <Avatar name={p.displayName} photoId={p.photoAttachmentId} size={96} />
         <div className="flex-1">

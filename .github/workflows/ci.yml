@@ -40,3 +40,9 @@ jobs:
       - run: SEED_DEMO=true pnpm db:seed
       - run: pnpm exec tsx tests/integration/flow.ts
       - run: pnpm build
+      - name: Browser end-to-end
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          PLAYWRIGHT_CHROMIUM= pnpm exec playwright test
+        env:
+          E2E_OUTPUT_DIR: ${{ runner.temp }}/e2e-results

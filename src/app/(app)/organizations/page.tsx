@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireViewer } from "@/server/auth/session";
-import { listOrganizationsForViewer } from "@/server/domain/organizations/service";
+import { attachPendingMemberships, listOrganizationsForViewer } from "@/server/domain/organizations/service";
 import { PageHeader, EmptyState, Card, CardHeader, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreateOrganizationForm } from "@/components/organizations/forms";
@@ -8,6 +8,7 @@ import { humanize } from "@/lib/utils";
 
 export default async function OrganizationsPage() {
   const viewer = await requireViewer();
+  await attachPendingMemberships(viewer.userId, viewer.email, viewer.emailVerified);
   const orgs = await listOrganizationsForViewer(viewer);
   return (
     <div className="mx-auto max-w-3xl space-y-6">
