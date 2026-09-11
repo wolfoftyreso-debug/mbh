@@ -43,6 +43,8 @@ const schema = z.object({
   BOOTSTRAP_ADMIN_EMAILS: z.string().default(""),
   RECORD_ID_PREFIX: z.string().default("HA"),
   CRON_SECRET: z.string().optional(),
+  IDENTITY_PROVIDER: z.enum(["manual", "stripe"]).default("manual"),
+  STRIPE_IDENTITY_WEBHOOK_SECRET: z.string().optional(),
 });
 
 function load() {

@@ -199,3 +199,9 @@ export async function requestPayoutAction(currency: string): Promise<ActionResul
     return undefined;
   });
 }
+
+export async function startHostedIdentityAction(): Promise<ActionResult<{ redirectUrl: string | null }>> {
+  const viewer = await requireViewer();
+  const { startHostedIdentityVerification } = await import("@/server/identity/service");
+  return safeAction("startHostedIdentity", () => startHostedIdentityVerification(viewer));
+}

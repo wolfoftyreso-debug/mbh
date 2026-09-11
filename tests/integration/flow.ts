@@ -235,13 +235,14 @@ async function main() {
   assert.equal(expiredOffer.status, "EXPIRED");
 
   const storage = getStorage();
-  await storage.put("retention-test-key", new Uint8Array([1, 2, 3]), "application/octet-stream");
-  const [att] = await db.insert(attachments).values({ ownerUserId: customer.userId, purpose: "VERIFICATION_DOCUMENT", storageProvider: storage.name, storageKey: "retention-test-key", filename: "id.pdf", mimeType: "application/pdf", sizeBytes: 3, sha256: "abc", retentionUntil: new Date(Date.now() - 1000) }).returning({ id: attachments.id });
+  const retentionKey = `retention-test-${Date.now()}`;
+  await storage.put(retentionKey, new Uint8Array([1, 2, 3]), "application/octet-stream");
+  const [att] = await db.insert(attachments).values({ ownerUserId: customer.userId, purpose: "VERIFICATION_DOCUMENT", storageProvider: storage.name, storageKey: retentionKey, filename: "id.pdf", mimeType: "application/pdf", sizeBytes: 3, sha256: "abc", retentionUntil: new Date(Date.now() - 1000) }).returning({ id: attachments.id });
   const ret = await runRetention();
   assert.ok(ret.filesDeleted >= 1);
   const [deleted] = await db.select({ deletedAt: attachments.deletedAt }).from(attachments).where(eq(attachments.id, att.id));
   assert.ok(deleted.deletedAt);
-  assert.equal(await storage.get("retention-test-key"), null);
+  assert.equal(await storage.get(retentionKey), null);
 
   console.log("FLOW OK");
   process.exit(0);

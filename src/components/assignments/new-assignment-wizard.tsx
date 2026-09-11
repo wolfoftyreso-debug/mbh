@@ -8,17 +8,10 @@ import { Alert } from "@/components/ui/card";
 import { FileUpload, formatBytes, type UploadedFile } from "@/components/upload/file-upload";
 import { Recorder } from "@/components/upload/recorder";
 import { cn } from "@/lib/utils";
-import { CONFIDENTIALITY_COPY } from "@/server/ai/policy";
+import { useT } from "@/components/i18n/provider";
 
 type Template = "STANDARD" | "EXPERT_BRAIN_DUMP" | "DOMAIN_REVIEW" | "MULTI_STAGE";
-type Level = keyof typeof CONFIDENTIALITY_COPY;
-
-const TEMPLATES: { key: Template; title: string; description: string; recommends: string }[] = [
-  { key: "EXPERT_BRAIN_DUMP", title: "Tell us what you know", description: "You have the knowledge. Record yourself or drop rough notes, and a language professional turns it into professional text.", recommends: "Language professional" },
-  { key: "STANDARD", title: "Rewrite, edit or write from material", description: "Human rewrite, editorial review, proofreading, language review or writing from documents and URLs.", recommends: "Language professional" },
-  { key: "DOMAIN_REVIEW", title: "Expert review of existing text", description: "A verified subject-matter expert checks facts and terminology and marks what is incorrect, imprecise or misleading.", recommends: "Domain reviewer" },
-  { key: "MULTI_STAGE", title: "Writer plus domain expert", description: "A writer produces the text, an expert reviews it, the writer corrects, an editor finalizes and signs.", recommends: "Two professionals" },
-];
+type Level = "STANDARD" | "PRIVATE" | "CONFIDENTIAL" | "STRICT_CONFIDENTIAL";
 
 const LEVELS: Level[] = ["STANDARD", "PRIVATE", "CONFIDENTIAL", "STRICT_CONFIDENTIAL"];
 
@@ -33,6 +26,13 @@ export function NewAssignmentWizard({ languages, categories, domains, organizati
   defaultCurrency: string;
 }) {
   const router = useRouter();
+  const { t } = useT();
+  const TEMPLATES: { key: Template; title: string; description: string; recommends: string }[] = [
+    { key: "EXPERT_BRAIN_DUMP", title: t("wiz.tpl.brainDump.title"), description: t("wiz.tpl.brainDump.body"), recommends: t("wiz.tpl.brainDump.rec") },
+    { key: "STANDARD", title: t("wiz.tpl.standard.title"), description: t("wiz.tpl.standard.body"), recommends: t("wiz.tpl.standard.rec") },
+    { key: "DOMAIN_REVIEW", title: t("wiz.tpl.domain.title"), description: t("wiz.tpl.domain.body"), recommends: t("wiz.tpl.domain.rec") },
+    { key: "MULTI_STAGE", title: t("wiz.tpl.multi.title"), description: t("wiz.tpl.multi.body"), recommends: t("wiz.tpl.multi.rec") },
+  ];
   const [step, setStep] = useState<0 | 1 | 2 | 3>(initialTemplate ? 1 : 0);
   const [template, setTemplate] = useState<Template>(initialTemplate ?? "STANDARD");
   const [title, setTitle] = useState("");
@@ -69,7 +69,7 @@ export function NewAssignmentWizard({ languages, categories, domains, organizati
   }, [template, categories]);
 
   const customerKnows = ["CUSTOMER_EXPERTISE", "FOUNDER_EXPERTISE", "EMPLOYEE_EXPERTISE", "VOICE_RECORDING", "INTERVIEW"].includes(knowledgeSourceType);
-  const recommendation = template === "DOMAIN_REVIEW" ? "A domain reviewer with verified expertise. Add a language editor afterwards only if needed." : customerKnows && domainRequirement === "NOT_REQUIRED" ? "A language professional. You provide the subject knowledge, so no separate domain expert is needed." : domainRequirement === "VERIFIED_REQUIRED" ? "Only professionals with platform-verified expertise in this domain." : domainRequirement === "REQUIRED" ? "A writer with domain expertise, or a writer plus a domain reviewer." : "A language professional; domain background ranks higher but is not required.";
+  const recommendation = template === "DOMAIN_REVIEW" ? t("wiz.rec.domainReview") : customerKnows && domainRequirement === "NOT_REQUIRED" ? t("wiz.rec.language") : domainRequirement === "VERIFIED_REQUIRED" ? t("wiz.rec.verified") : domainRequirement === "REQUIRED" ? t("wiz.rec.required") : t("wiz.rec.preferred");
 
   function chooseTemplate(t: Template) {
     setTemplate(t);
@@ -99,7 +99,7 @@ export function NewAssignmentWizard({ languages, categories, domains, organizati
     const res = await suggestBriefAction(description);
     setBusy(false);
     if (!res.ok) return setError(res.error);
-    if (!res.data) return setSuggestion("AI suggestions are unavailable right now; continue manually.");
+    if (!res.data) return setSuggestion(t("wiz.aiUnavailable"));
     const s = res.data;
     if (!title && s.title) setTitle(s.title);
     const cat = categories.find((c) => c.slug === s.suggestedService);
@@ -156,19 +156,19 @@ export function NewAssignmentWizard({ languages, categories, domains, organizati
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wider text-ink-3">New assignment · step {step + 1} of 4</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{step === 0 ? "What do you need?" : step === 1 ? "Your material" : step === 2 ? "Requirements" : "Confidentiality and publish"}</h1>
-        {invitedProfessional ? <p className="mt-1 text-sm text-ink-2">{invitedProfessional.displayName} will be invited when you publish.</p> : null}
+        <p className="text-xs font-medium uppercase tracking-wider text-ink-3">{t("wiz.eyebrow", { step: step + 1 })}</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{step === 0 ? t("wiz.step0") : step === 1 ? t("wiz.step1") : step === 2 ? t("wiz.step2") : t("wiz.step3")}</h1>
+        {invitedProfessional ? <p className="mt-1 text-sm text-ink-2">{t("wiz.willInvite", { name: invitedProfessional.displayName })}</p> : null}
       </div>
       {error ? <Alert tone="danger">{error}</Alert> : null}
 
       {step === 0 ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          {TEMPLATES.map((t) => (
-            <button key={t.key} type="button" onClick={() => chooseTemplate(t.key)} className={cn("rounded-lg border bg-surface p-5 text-left transition-colors hover:border-accent", template === t.key ? "border-accent" : "border-line")}>
-              <p className="font-semibold">{t.title}</p>
-              <p className="mt-1 text-sm text-ink-2">{t.description}</p>
-              <p className="mt-3 text-xs text-accent">Recommended: {t.recommends}</p>
+          {TEMPLATES.map((tpl) => (
+            <button key={tpl.key} type="button" onClick={() => chooseTemplate(tpl.key)} className={cn("rounded-lg border bg-surface p-5 text-left transition-colors hover:border-accent", template === tpl.key ? "border-accent" : "border-line")}>
+              <p className="font-semibold">{tpl.title}</p>
+              <p className="mt-1 text-sm text-ink-2">{tpl.description}</p>
+              <p className="mt-3 text-xs text-accent">{t("wiz.recommended", { what: tpl.recommends })}</p>
             </button>
           ))}
         </div>
@@ -178,34 +178,34 @@ export function NewAssignmentWizard({ languages, categories, domains, organizati
         <div className="space-y-6">
           {template === "EXPERT_BRAIN_DUMP" ? (
             <div className="rounded-lg border border-accent/30 bg-accent-soft/40 p-5">
-              <p className="font-medium">Tell us what you know.</p>
-              <p className="mt-1 text-sm text-ink-2">Do not worry about grammar, structure or wording. Record yourself explaining what this is, how it works, what matters, what customers misunderstand, what makes your company different, technical details, examples and common questions.</p>
+              <p className="font-medium">{t("wiz.brainDump.title")}</p>
+              <p className="mt-1 text-sm text-ink-2">{t("wiz.brainDump.body")}</p>
               <div className="mt-4"><Recorder onUploaded={(f) => setFiles((prev) => [...prev, f])} /></div>
             </div>
           ) : null}
-          <Field label="Title" required>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={template === "DOMAIN_REVIEW" ? "Technical review of 12 workshop articles" : "Homepage copy for our DSG servicing"} maxLength={160} />
+          <Field label={t("wiz.title")} required>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={template === "DOMAIN_REVIEW" ? t("wiz.title.phDomain") : t("wiz.title.ph")} maxLength={160} />
           </Field>
-          <Field label={template === "DOMAIN_REVIEW" ? "What should be checked?" : "Describe the assignment"} hint="A few sentences are enough. Who is it for, what should it achieve, what is important.">
+          <Field label={template === "DOMAIN_REVIEW" ? t("wiz.describeDomain") : t("wiz.describe")} hint={t("wiz.describe.hint")}>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} />
           </Field>
           {aiAvailable && description.length > 40 ? (
             <div className="flex items-center gap-3">
-              <Button type="button" variant="outline" size="sm" onClick={suggest} disabled={busy}>{busy ? "Thinking…" : "Suggest service and language"}</Button>
+              <Button type="button" variant="outline" size="sm" onClick={suggest} disabled={busy}>{busy ? t("wiz.thinking") : t("wiz.suggest")}</Button>
               {suggestion ? <p className="text-xs text-ink-3">{suggestion}</p> : null}
             </div>
           ) : null}
-          <Field label={template === "DOMAIN_REVIEW" ? "Text to review" : "Source text"} hint="Paste existing text, a draft, notes or an AI-generated draft. This becomes Version 1 (customer source).">
+          <Field label={template === "DOMAIN_REVIEW" ? t("wiz.textToReview") : t("wiz.sourceText")} hint={t("wiz.sourceText.hint")}>
             <Textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} rows={8} />
           </Field>
-          <Field label="URLs" hint="One per line.">
+          <Field label={t("wiz.urls")} hint={t("wiz.urls.hint")}>
             <Textarea value={urls} onChange={(e) => setUrls(e.target.value)} rows={2} className="min-h-16" />
           </Field>
           <div>
-            <p className="text-sm font-medium">Files and recordings</p>
+            <p className="text-sm font-medium">{t("wiz.files")}</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              <FileUpload purpose="SOURCE_MATERIAL" accept=".pdf,.doc,.docx,.odt,.txt,.md,.rtf,.png,.jpg,.jpeg,.webp" onUploaded={(f) => setFiles((p) => [...p, ...f])} label="Add documents" compact />
-              <FileUpload purpose="AUDIO_RECORDING" accept="audio/*,video/mp4,video/webm" onUploaded={(f) => setFiles((p) => [...p, ...f])} label="Upload audio" compact />
+              <FileUpload purpose="SOURCE_MATERIAL" accept=".pdf,.doc,.docx,.odt,.txt,.md,.rtf,.png,.jpg,.jpeg,.webp" onUploaded={(f) => setFiles((p) => [...p, ...f])} label={t("wiz.addDocuments")} compact />
+              <FileUpload purpose="AUDIO_RECORDING" accept="audio/*,video/mp4,video/webm" onUploaded={(f) => setFiles((p) => [...p, ...f])} label={t("wiz.uploadAudio")} compact />
               {template !== "EXPERT_BRAIN_DUMP" ? <Recorder onUploaded={(f) => setFiles((p) => [...p, f])} /> : null}
             </div>
             {files.length ? (
@@ -213,15 +213,15 @@ export function NewAssignmentWizard({ languages, categories, domains, organizati
                 {files.map((f) => (
                   <li key={f.id} className="flex items-center justify-between rounded-md border border-line bg-surface px-3 py-1.5">
                     <span className="truncate">{f.filename} <span className="text-ink-3">· {formatBytes(f.sizeBytes)}</span></span>
-                    <button type="button" className="text-xs text-ink-3 hover:text-danger" onClick={() => setFiles((p) => p.filter((x) => x.id !== f.id))}>Remove</button>
+                    <button type="button" className="text-xs text-ink-3 hover:text-danger" onClick={() => setFiles((p) => p.filter((x) => x.id !== f.id))}>{t("wiz.remove")}</button>
                   </li>
                 ))}
               </ul>
             ) : null}
           </div>
           <div className="flex justify-between">
-            <Button variant="ghost" type="button" onClick={() => setStep(0)}>Back</Button>
-            <Button type="button" onClick={() => (title.trim().length < 3 ? setError("Give the assignment a title") : (setError(null), setStep(2)))}>Continue</Button>
+            <Button variant="ghost" type="button" onClick={() => setStep(0)}>{t("wiz.back")}</Button>
+            <Button type="button" onClick={() => (title.trim().length < 3 ? setError(t("wiz.err.title")) : (setError(null), setStep(2)))}>{t("wiz.continue")}</Button>
           </div>
         </div>
       ) : null}
@@ -229,78 +229,78 @@ export function NewAssignmentWizard({ languages, categories, domains, organizati
       {step === 2 ? (
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Service" required>
+            <Field label={t("wiz.service")} required>
               <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                <option value="">Choose…</option>
+                <option value="">{t("wiz.choose")}</option>
                 {catForTemplate.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
               </Select>
             </Field>
-            <Field label="Language" required>
+            <Field label={t("wiz.language")} required>
               <Select value={languageCode} onChange={(e) => setLanguageCode(e.target.value)}>
                 {languages.map((l) => (<option key={l.code} value={l.code}>{l.name}</option>))}
               </Select>
             </Field>
           </div>
-          <Field label="Where does the subject knowledge come from?" hint="This is recorded as provenance and decides whether a domain expert is needed.">
+          <Field label={t("wiz.knowledge")} hint={t("wiz.knowledge.hint")}>
             <Select value={knowledgeSourceType} onChange={(e) => { const v = e.target.value as NonNullable<CreateAssignmentPayload["knowledgeSourceType"]>; setKnowledgeSourceType(v); if (["CUSTOMER_EXPERTISE", "FOUNDER_EXPERTISE", "EMPLOYEE_EXPERTISE", "VOICE_RECORDING", "INTERVIEW"].includes(v) && template !== "DOMAIN_REVIEW") setDomainRequirement("NOT_REQUIRED"); }}>
-              <option value="FOUNDER_EXPERTISE">Me — I am the founder / owner and know the subject</option>
-              <option value="EMPLOYEE_EXPERTISE">One of our employees knows the subject</option>
-              <option value="CUSTOMER_EXPERTISE">Our organization&apos;s own expertise</option>
-              <option value="VOICE_RECORDING">A voice recording I provide</option>
-              <option value="INTERVIEW">An interview</option>
-              <option value="DOCUMENTATION">Existing documentation</option>
-              <option value="TRANSCRIPT">A transcript</option>
-              <option value="EXTERNAL_SOURCES">External sources — the professional must supply the expertise</option>
-              <option value="PROFESSIONAL_EXPERTISE">The professional&apos;s own expertise</option>
-              <option value="MIXED">Mixed</option>
+              <option value="FOUNDER_EXPERTISE">{t("wiz.ks.FOUNDER_EXPERTISE")}</option>
+              <option value="EMPLOYEE_EXPERTISE">{t("wiz.ks.EMPLOYEE_EXPERTISE")}</option>
+              <option value="CUSTOMER_EXPERTISE">{t("wiz.ks.CUSTOMER_EXPERTISE")}</option>
+              <option value="VOICE_RECORDING">{t("wiz.ks.VOICE_RECORDING")}</option>
+              <option value="INTERVIEW">{t("wiz.ks.INTERVIEW")}</option>
+              <option value="DOCUMENTATION">{t("wiz.ks.DOCUMENTATION")}</option>
+              <option value="TRANSCRIPT">{t("wiz.ks.TRANSCRIPT")}</option>
+              <option value="EXTERNAL_SOURCES">{t("wiz.ks.EXTERNAL_SOURCES")}</option>
+              <option value="PROFESSIONAL_EXPERTISE">{t("wiz.ks.PROFESSIONAL_EXPERTISE")}</option>
+              <option value="MIXED">{t("wiz.ks.MIXED")}</option>
             </Select>
           </Field>
           {customerKnows ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Knowledge provided by (name)" hint="Shown on the record only if you allow it."><Input value={knowledgeName} onChange={(e) => setKnowledgeName(e.target.value)} placeholder="Erik Svensson" /></Field>
-              <Field label="Their role"><Input value={knowledgeTitle} onChange={(e) => setKnowledgeTitle(e.target.value)} placeholder="Founder, workshop owner" /></Field>
+              <Field label={t("wiz.knowledgeName")} hint={t("wiz.knowledgeName.hint")}><Input value={knowledgeName} onChange={(e) => setKnowledgeName(e.target.value)} placeholder={t("wiz.knowledgeName.ph")} /></Field>
+              <Field label={t("wiz.knowledgeRole")}><Input value={knowledgeTitle} onChange={(e) => setKnowledgeTitle(e.target.value)} placeholder={t("wiz.knowledgeRole.ph")} /></Field>
             </div>
           ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Subject domain" hint="Optional. Used for matching and for domain-review requirements.">
+            <Field label={t("wiz.domain")} hint={t("wiz.domain.hint")}>
               <Select value={domainId} onChange={(e) => setDomainId(e.target.value)}>
-                <option value="">None / general</option>
+                <option value="">{t("wiz.domain.none")}</option>
                 {domains.map((d) => (<option key={d.id} value={d.id}>{" ".repeat(d.depth * 3)}{d.name}</option>))}
               </Select>
             </Field>
-            <Field label="Domain expertise is…">
+            <Field label={t("wiz.domainReq")}>
               <Select value={domainRequirement} onChange={(e) => setDomainRequirement(e.target.value as typeof domainRequirement)} disabled={!domainId}>
-                <option value="NOT_REQUIRED">Not required (I provide the knowledge)</option>
-                <option value="PREFERRED">Preferred</option>
-                <option value="REQUIRED">Required</option>
-                <option value="VERIFIED_REQUIRED">Required and platform-verified</option>
+                <option value="NOT_REQUIRED">{t("wiz.req.NOT_REQUIRED")}</option>
+                <option value="PREFERRED">{t("wiz.req.PREFERRED")}</option>
+                <option value="REQUIRED">{t("wiz.req.REQUIRED")}</option>
+                <option value="VERIFIED_REQUIRED">{t("wiz.req.VERIFIED_REQUIRED")}</option>
               </Select>
             </Field>
           </div>
-          <Alert tone="info" title="Recommended competence">{recommendation}</Alert>
-          <button type="button" className="text-sm text-accent underline-offset-4 hover:underline" onClick={() => setMore(!more)}>{more ? "Fewer options" : "More options (audience, deadline, budget, attribution…)"}</button>
+          <Alert tone="info" title={t("wiz.recommendedCompetence")}>{recommendation}</Alert>
+          <button type="button" className="text-sm text-accent underline-offset-4 hover:underline" onClick={() => setMore(!more)}>{more ? t("wiz.fewer") : t("wiz.more")}</button>
           {more ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Target audience"><Input value={targetAudience} onChange={(e) => setTargetAudience(e.target.value)} /></Field>
-              <Field label="Intended publication"><Input value={intendedPublication} onChange={(e) => setIntendedPublication(e.target.value)} placeholder="Website, print, internal…" /></Field>
-              <Field label="Approximate word count"><Input type="number" min={0} value={wordCount} onChange={(e) => setWordCount(e.target.value)} /></Field>
-              <Field label="Deadline"><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></Field>
-              <Field label={`Budget (${defaultCurrency})`} hint="Optional guidance for professionals."><Input inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} /></Field>
+              <Field label={t("wiz.audience")}><Input value={targetAudience} onChange={(e) => setTargetAudience(e.target.value)} /></Field>
+              <Field label={t("wiz.publication")}><Input value={intendedPublication} onChange={(e) => setIntendedPublication(e.target.value)} placeholder={t("wiz.publication.ph")} /></Field>
+              <Field label={t("wiz.wordCount")}><Input type="number" min={0} value={wordCount} onChange={(e) => setWordCount(e.target.value)} /></Field>
+              <Field label={t("wiz.deadline")}><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></Field>
+              <Field label={t("wiz.budget", { currency: defaultCurrency })} hint={t("wiz.budget.hint")}><Input inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} /></Field>
               {organizations.length ? (
-                <Field label="On behalf of organization">
+                <Field label={t("wiz.onBehalf")}>
                   <Select value={organizationId} onChange={(e) => setOrganizationId(e.target.value)}>
-                    <option value="">Myself</option>
+                    <option value="">{t("wiz.myself")}</option>
                     {organizations.map((o) => (<option key={o.id} value={o.id}>{o.name}</option>))}
                   </Select>
                 </Field>
               ) : null}
-              <Field label="Attribution requirements" hint="How should the professional be credited, if at all?"><Textarea value={attribution} onChange={(e) => setAttribution(e.target.value)} rows={2} className="min-h-16" /></Field>
-              <Field label="Additional instructions"><Textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} className="min-h-20" /></Field>
+              <Field label={t("wiz.attribution")} hint={t("wiz.attribution.hint")}><Textarea value={attribution} onChange={(e) => setAttribution(e.target.value)} rows={2} className="min-h-16" /></Field>
+              <Field label={t("wiz.instructions")}><Textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} className="min-h-20" /></Field>
             </div>
           ) : null}
           <div className="flex justify-between">
-            <Button variant="ghost" type="button" onClick={() => setStep(1)}>Back</Button>
-            <Button type="button" onClick={() => (!categoryId ? setError("Choose a service") : (setError(null), setStep(3)))}>Continue</Button>
+            <Button variant="ghost" type="button" onClick={() => setStep(1)}>{t("wiz.back")}</Button>
+            <Button type="button" onClick={() => (!categoryId ? setError(t("wiz.err.service")) : (setError(null), setStep(3)))}>{t("wiz.continue")}</Button>
           </div>
         </div>
       ) : null}
@@ -312,24 +312,24 @@ export function NewAssignmentWizard({ languages, categories, domains, organizati
               <label key={l} className={cn("flex cursor-pointer gap-3 rounded-lg border bg-surface p-4", confidentiality === l ? "border-accent" : "border-line")}>
                 <input type="radio" name="level" className="mt-1" checked={confidentiality === l} onChange={() => { setConfidentiality(l); setAiPolicy(""); }} />
                 <span>
-                  <span className="font-medium">{CONFIDENTIALITY_COPY[l].label}</span>
-                  <span className="block text-sm text-ink-2">{CONFIDENTIALITY_COPY[l].short}</span>
+                  <span className="font-medium">{t(`conf.${l}.label`)}</span>
+                  <span className="block text-sm text-ink-2">{t(`conf.${l}.short`)}</span>
                 </span>
               </label>
             ))}
           </div>
-          <Field label="AI processing" hint="Assignment content is never sent to AI providers unless this policy allows it. Professionals see the policy and must respect it.">
+          <Field label={t("wiz.ai")} hint={t("wiz.ai.hint")}>
             <Select value={aiPolicy} onChange={(e) => setAiPolicy(e.target.value as typeof aiPolicy)}>
-              <option value="">Default for this level</option>
-              <option value="AI_DISABLED">Disabled — no content or metadata to AI</option>
-              <option value="AI_METADATA_ONLY">Metadata only — title and category for matching</option>
-              {confidentiality !== "STRICT_CONFIDENTIAL" ? <option value="AI_ALLOWED">Allowed — platform AI assistance permitted</option> : null}
+              <option value="">{t("wiz.ai.default")}</option>
+              <option value="AI_DISABLED">{t("wiz.ai.disabled")}</option>
+              <option value="AI_METADATA_ONLY">{t("wiz.ai.metadata")}</option>
+              {confidentiality !== "STRICT_CONFIDENTIAL" ? <option value="AI_ALLOWED">{t("wiz.ai.allowed")}</option> : null}
             </Select>
           </Field>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={openImmediately} onChange={(e) => setOpenImmediately(e.target.checked)} /> Open for offers immediately (otherwise saved as a draft)</label>
+          <label className="flex items-center gap-2 text-sm"><Checkbox checked={openImmediately} onChange={(e) => setOpenImmediately(e.target.checked)} /> {t("wiz.openImmediately")}</label>
           <div className="flex justify-between">
-            <Button variant="ghost" type="button" onClick={() => setStep(2)}>Back</Button>
-            <Button type="button" onClick={submit} disabled={busy}>{busy ? "Creating…" : openImmediately ? "Publish assignment" : "Save draft"}</Button>
+            <Button variant="ghost" type="button" onClick={() => setStep(2)}>{t("wiz.back")}</Button>
+            <Button type="button" onClick={submit} disabled={busy}>{busy ? t("wiz.creating") : openImmediately ? t("wiz.publish") : t("wiz.saveDraft")}</Button>
           </div>
         </div>
       ) : null}

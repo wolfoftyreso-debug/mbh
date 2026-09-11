@@ -1,4 +1,4 @@
-import { VerificationBadge } from "@/components/ui/badge";
+import { VerificationBadge } from "@/components/ui/status-badge";
 
 export const metadata = { title: "What verification means" };
 

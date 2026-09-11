@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, Field, Checkbox, Input } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
+import { useT } from "@/components/i18n/provider";
 
 interface RecordView { id: string; publicId: string; visibility: "PRIVATE" | "ANONYMIZED" | "PUBLIC"; customerDisplay: "HIDDEN" | "PRIVATE_ORGANIZATION" | "NAMED"; titlePublic: boolean; hashPublic: boolean; publicationUrl: string | null; status: string; versionNumber: number; professionalPublicName: string; signedAt: Date }
 
@@ -42,11 +43,12 @@ function RecordEditor({ publicId, r, confidential }: { publicId: string; r: Reco
 }
 
 export function RecordsPanel({ publicId, records, canManage, confidentiality }: { publicId: string; records: RecordView[]; canManage: boolean; confidentiality: string }) {
+  const { t } = useT();
   const [editing, setEditing] = useState<string | null>(null);
   const confidential = confidentiality === "CONFIDENTIAL" || confidentiality === "STRICT_CONFIDENTIAL";
   return (
     <div>
-      <h2 className="text-xs font-medium uppercase tracking-wider text-ink-3">Authorship records</h2>
+      <h2 className="text-xs font-medium uppercase tracking-wider text-ink-3">{t("ws.records")}</h2>
       <ul className="mt-2 space-y-2">
         {records.map((r) => (
           <li key={r.id} className="rounded-md border border-line bg-surface px-2.5 py-2">

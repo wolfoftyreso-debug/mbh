@@ -6,7 +6,8 @@ import { publicCredentials, publicPortfolio, publicRecordsForProfessional } from
 import { publicReviews, reputationSummary } from "@/server/domain/reviews/service";
 import { getViewer } from "@/server/auth/session";
 import { Avatar } from "@/components/ui/avatar";
-import { Badge, ClaimBadge, VerificationBadge } from "@/components/ui/badge";
+import { Badge, ClaimBadge } from "@/components/ui/badge";
+import { VerificationBadge } from "@/components/ui/status-badge";
 import { Stars } from "@/components/ui/stars";
 import { LinkButton } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";

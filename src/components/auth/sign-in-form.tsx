@@ -4,8 +4,10 @@ import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
 import { Alert } from "@/components/ui/card";
+import { useT } from "@/components/i18n/provider";
 
 export function SignInForm({ providers, next, error }: { providers: { google: boolean; apple: boolean; x: boolean; devLogin: boolean }; next: string; error: string | null }) {
+  const { t } = useT();
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(error);
   const [email, setEmail] = useState("");
@@ -36,48 +38,33 @@ export function SignInForm({ providers, next, error }: { providers: { google: bo
   return (
     <div className="space-y-4">
       {message ? <Alert tone="danger">{message}</Alert> : null}
-      {providers.google ? (
-        <Button variant="outline" size="lg" className="w-full" onClick={() => social("google")} disabled={busy !== null}>
-          Continue with Google
-        </Button>
-      ) : null}
-      {providers.apple ? (
-        <Button variant="outline" size="lg" className="w-full" onClick={() => social("apple")} disabled={busy !== null}>
-          Continue with Apple
-        </Button>
-      ) : null}
-      {providers.x ? (
-        <Button variant="outline" size="lg" className="w-full" onClick={() => social("twitter")} disabled={busy !== null}>
-          Continue with X
-        </Button>
-      ) : null}
-      {!anyProvider && !providers.devLogin ? <Alert tone="warn">No sign-in providers are configured. Set GOOGLE_CLIENT_ID, APPLE_CLIENT_ID or X_CLIENT_ID in the environment.</Alert> : null}
+      {providers.google ? <Button variant="outline" size="lg" className="w-full" onClick={() => social("google")} disabled={busy !== null}>{t("signin.google")}</Button> : null}
+      {providers.apple ? <Button variant="outline" size="lg" className="w-full" onClick={() => social("apple")} disabled={busy !== null}>{t("signin.apple")}</Button> : null}
+      {providers.x ? <Button variant="outline" size="lg" className="w-full" onClick={() => social("twitter")} disabled={busy !== null}>{t("signin.x")}</Button> : null}
+      {!anyProvider && !providers.devLogin ? <Alert tone="warn">{t("signin.noProviders")}</Alert> : null}
       {providers.devLogin ? (
         <form onSubmit={dev} className="space-y-3 rounded-lg border border-dashed border-line-strong bg-surface p-4">
-          <p className="text-xs font-medium uppercase tracking-wider text-ink-3">Development login</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-ink-3">{t("signin.dev")}</p>
           {mode === "up" ? (
-            <Field label="Name">
+            <Field label={t("signin.name")}>
               <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
             </Field>
           ) : null}
-          <Field label="E-mail">
+          <Field label={t("signin.email")}>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
           </Field>
-          <Field label="Password">
+          <Field label={t("signin.password")}>
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="current-password" />
           </Field>
           <div className="flex items-center justify-between gap-2">
-            <Button type="submit" disabled={busy !== null}>
-              {mode === "in" ? "Sign in" : "Create account"}
-            </Button>
-            <button type="button" className="text-xs text-ink-3 underline" onClick={() => setMode(mode === "in" ? "up" : "in")}>
-              {mode === "in" ? "Create a development account" : "I already have an account"}
-            </button>
+            <Button type="submit" disabled={busy !== null}>{mode === "in" ? t("signin.submit") : t("signin.create")}</Button>
+            <button type="button" className="text-xs text-ink-3 underline" onClick={() => setMode(mode === "in" ? "up" : "in")}>{mode === "in" ? t("signin.switchToCreate") : t("signin.switchToSignIn")}</button>
           </div>
         </form>
       ) : null}
       <p className="text-center text-xs text-ink-3">
-        By continuing you agree to the <a href="/terms" className="underline">terms</a> and <a href="/privacy" className="underline">privacy policy</a>.
+        <a href="/terms" className="underline">{t("footer.terms")}</a> · <a href="/privacy" className="underline">{t("footer.privacy")}</a>
+        <span className="block">{t("signin.legal")}</span>
       </p>
     </div>
   );

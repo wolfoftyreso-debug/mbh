@@ -1,18 +1,20 @@
-import { CONFIDENTIALITY_COPY } from "@/server/ai/policy";
+import { getT } from "@/server/i18n";
+const LEVELS = ["STANDARD", "PRIVATE", "CONFIDENTIAL", "STRICT_CONFIDENTIAL"] as const;
 
 export const metadata = { title: "Confidentiality" };
 
-export default function ConfidentialityPage() {
+export default async function ConfidentialityPage() {
+  const { t } = await getT();
   return (
     <div className="mx-auto max-w-3xl px-4 py-16">
       <h1 className="text-3xl font-semibold tracking-tight">Confidentiality</h1>
       <p className="mt-4 text-ink-2">Everything customer-specific is private by default. Publication requires an explicit, authorized action. Every assignment carries a confidentiality level and an AI-processing policy that the platform enforces server-side.</p>
       <div className="mt-10 space-y-4">
-        {(Object.keys(CONFIDENTIALITY_COPY) as (keyof typeof CONFIDENTIALITY_COPY)[]).map((k) => (
+        {LEVELS.map((k) => (
           <div key={k} className="rounded-lg border border-line bg-surface p-5">
-            <h2 className="font-semibold">{CONFIDENTIALITY_COPY[k].label}</h2>
-            <p className="mt-1 text-sm">{CONFIDENTIALITY_COPY[k].short}</p>
-            <p className="mt-2 text-sm text-ink-2">{CONFIDENTIALITY_COPY[k].detail}</p>
+            <h2 className="font-semibold">{t(`conf.${k}.label`)}</h2>
+            <p className="mt-1 text-sm">{t(`conf.${k}.short`)}</p>
+            <p className="mt-2 text-sm text-ink-2">{t(`conf.${k}.detail`)}</p>
           </div>
         ))}
       </div>

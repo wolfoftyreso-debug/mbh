@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/server/auth/session";
 import { listAssignmentsAdmin } from "@/server/domain/admin/service";
 import { PageHeader } from "@/components/ui/card";
-import { StatusBadge, ConfidentialityBadge } from "@/components/ui/badge";
+import { StatusBadge, ConfidentialityBadge } from "@/components/ui/status-badge";
 import { Input, Select } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { ASSIGNMENT_STATUSES } from "@/server/domain/assignments/state-machine";

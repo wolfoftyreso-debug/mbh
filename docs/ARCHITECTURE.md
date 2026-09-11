@@ -70,6 +70,14 @@ Integer minor units with explicit currency. `ledger_entry` is append-only and id
 
 `src/server/domain/phone/service.ts` stores a hashed one-time code (10 min) in Better Auth's `verification` table and sends it through the SMS adapter. Only verified numbers receive SMS notifications. In development with the noop provider the code is returned to the UI.
 
+## Identity verification providers
+
+`src/server/identity` abstracts KYC: `ManualIdentityProvider` (staff review a private document upload, default) and `StripeIdentityProvider` (hosted document + selfie session, verdict delivered to `/api/webhooks/identity`). Both write to `identity_verification`; a verified verdict sets `identity_verified_at` and recomputes the verification level.
+
+## Localization
+
+Server components call `getT()` from `src/server/i18n.ts`; client components use `useT()` from the `I18nProvider` mounted in the root layout. Localized enum labels (statuses, verification levels, contribution roles, confidentiality copy) live in the dictionaries; `StatusBadge`, `VerificationBadge` and `ConfidentialityBadge` are server components in `src/components/ui/status-badge.tsx` so the dictionary never needs to reach client bundles through them. Admin pages and e-mail templates are English only in V1.
+
 ## Renaming
 
 `src/lib/config/brand.ts` and `NEXT_PUBLIC_BRAND_NAME` / `RECORD_ID_PREFIX` control naming. No feature code hard-codes the product name.

@@ -51,6 +51,11 @@ Demo accounts (when `AUTH_DEV_LOGIN=true` and `SEED_DEMO=true`, password `humana
 6. Leave `AUTH_DEV_LOGIN` unset in production (it is hard-disabled for production builds regardless).
 7. Set `CRON_SECRET`. `vercel.json` schedules three daily jobs against `/api/cron/{housekeeping,retention,publication-monitor}`; any scheduler can call them with `Authorization: Bearer $CRON_SECRET`.
 8. Set `SMS_PROVIDER=twilio` and the Twilio variables to enable phone verification and SMS notifications (SMS is only sent to verified numbers).
+9. Optionally set `IDENTITY_PROVIDER=stripe` (plus `STRIPE_IDENTITY_WEBHOOK_SECRET`, webhook URL `/api/webhooks/identity`) to replace manual identity review with Stripe Identity.
+
+## Languages
+
+The UI ships in English and Swedish. The locale is resolved from the signed-in user's setting, then the `ha_locale` cookie, then `Accept-Language`. A language switch in the header, footer and app sidebar calls `/api/locale`. Dictionaries live in `src/lib/i18n/{en,sv}.ts`; the English file is the typed source of truth, so a missing Swedish key fails the typecheck.
 
 ## Documentation
 

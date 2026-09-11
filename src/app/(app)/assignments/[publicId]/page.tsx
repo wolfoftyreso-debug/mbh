@@ -12,9 +12,9 @@ import { listAssignmentFiles } from "@/server/domain/files/service";
 import { assignmentPaymentState } from "@/server/finance/payments";
 import { matchProfessionals, recommendCompetence } from "@/server/domain/matching/service";
 import { hasAcceptedConfidentialityAgreement } from "@/server/domain/assignments/service";
-import { STATUS_DESCRIPTIONS, STATUS_LABELS } from "@/server/domain/assignments/state-machine";
-import { CONFIDENTIALITY_COPY } from "@/server/ai/policy";
-import { StatusBadge, ConfidentialityBadge, Badge } from "@/components/ui/badge";
+import { getT } from "@/server/i18n";
+import { Badge } from "@/components/ui/badge";
+import { StatusBadge, ConfidentialityBadge } from "@/components/ui/status-badge";
 import { Alert, DescriptionList } from "@/components/ui/card";
 import { LinkButton } from "@/components/ui/button";
 import { formatDate, formatDateTime, humanize } from "@/lib/utils";
@@ -37,7 +37,8 @@ export const dynamic = "force-dynamic";
 export default async function WorkspacePage({ params, searchParams }: { params: Promise<{ publicId: string }>; searchParams: Promise<{ payment?: string }> }) {
   const { publicId } = await params;
   const sp = await searchParams;
-  const viewer = await requireViewer();
+  const [viewer, { t, locale }] = await Promise.all([requireViewer(), getT()]);
+  const dl = locale === "sv" ? "sv-SE" : "en-GB";
   let ctx;
   try {
     ctx = await authorizeAssignment(viewer, publicId, "view_metadata");
@@ -93,17 +94,17 @@ export default async function WorkspacePage({ params, searchParams }: { params: 
           <div className="min-w-0">
             <p className="text-xs text-ink-3"><Link href="/assignments" className="hover:underline">Assignments</Link> / <span className="mono">{a.publicId}</span></p>
             <h1 className="mt-1 truncate text-xl font-semibold tracking-tight md:text-2xl">{a.title}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2"><StatusBadge status={a.status} /><ConfidentialityBadge level={a.confidentiality} /><Badge>{humanize(a.template)}</Badge>{language ? <Badge>{language.name}</Badge> : null}{category ? <Badge>{category.name}</Badge> : null}{ctx.role === "ADMIN" ? <Badge tone="danger">Admin view{ctx.adminContentGrant ? " · content access granted" : " · metadata only"}</Badge> : null}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-2"><StatusBadge status={a.status} /><ConfidentialityBadge level={a.confidentiality} /><Badge>{humanize(a.template)}</Badge>{language ? <Badge>{language.name}</Badge> : null}{category ? <Badge>{category.name}</Badge> : null}{ctx.role === "ADMIN" ? <Badge tone="danger">{t("ws.adminView")} · {ctx.adminContentGrant ? t("ws.contentGranted") : t("ws.metadataOnly")}</Badge> : null}</div>
           </div>
-          <p className="max-w-sm text-sm text-ink-2">{STATUS_DESCRIPTIONS[a.status]}</p>
+          <p className="max-w-sm text-sm text-ink-2">{t(`statusDesc.${a.status}`)}</p>
         </div>
-        {sp.payment === "success" ? <div className="mt-3"><Alert tone="success">Payment received. Thank you.</Alert></div> : sp.payment === "cancelled" ? <div className="mt-3"><Alert tone="warn">Payment was cancelled. You can try again below.</Alert></div> : null}
+        {sp.payment === "success" ? <div className="mt-3"><Alert tone="success">{t("ws.paymentSuccess")}</Alert></div> : sp.payment === "cancelled" ? <div className="mt-3"><Alert tone="warn">{t("ws.paymentCancelled")}</Alert></div> : null}
       </div>
 
       <div className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-[240px_1fr_340px]">
         {/* LEFT: navigation / history */}
         <aside className="border-b border-line bg-surface/60 p-4 text-sm lg:border-b-0 lg:border-r">
-          <h2 className="text-xs font-medium uppercase tracking-wider text-ink-3">Stages</h2>
+          <h2 className="text-xs font-medium uppercase tracking-wider text-ink-3">{t("ws.stages")}</h2>
           <ol className="mt-2 space-y-1.5">
             {stages.map((s) => {
               const assignee = participants.find((p) => p.userId === s.assigneeUserId);
@@ -115,16 +116,16 @@ export default async function WorkspacePage({ params, searchParams }: { params: 
               );
             })}
           </ol>
-          <h2 className="mt-6 text-xs font-medium uppercase tracking-wider text-ink-3">Participants</h2>
+          <h2 className="mt-6 text-xs font-medium uppercase tracking-wider text-ink-3">{t("ws.participants")}</h2>
           <ul className="mt-2 space-y-1.5">
             {participants.map((p) => (
-              <li key={p.userId}><span className="font-medium">{p.name}</span><span className="block text-xs text-ink-3">{p.role === "PROFESSIONAL" ? p.contributionRoles.map(humanize).join(", ") || "Professional" : p.role === "CUSTOMER" ? (org ? `Customer · ${org.name}` : "Customer") : humanize(p.role)}</span></li>
+              <li key={p.userId}><span className="font-medium">{p.name}</span><span className="block text-xs text-ink-3">{p.role === "PROFESSIONAL" ? p.contributionRoles.map(humanize).join(", ") || t("ws.professional") : p.role === "CUSTOMER" ? (org ? `${t("ws.customer")} · ${org.name}` : t("ws.customer")) : humanize(p.role)}</span></li>
             ))}
           </ul>
-          <h2 className="mt-6 text-xs font-medium uppercase tracking-wider text-ink-3">History</h2>
+          <h2 className="mt-6 text-xs font-medium uppercase tracking-wider text-ink-3">{t("ws.history")}</h2>
           <ul className="mt-2 space-y-1.5 text-xs text-ink-2">
             {history.map((h) => (
-              <li key={h.h.id}><span className="font-medium text-ink">{STATUS_LABELS[h.h.toStatus]}</span> · {formatDateTime(h.h.createdAt)}{h.actorName ? ` · ${h.actorName}` : ""}</li>
+              <li key={h.h.id}><span className="font-medium text-ink">{t(`status.${h.h.toStatus}`)}</span> · {formatDateTime(h.h.createdAt, dl)}{h.actorName ? ` · ${h.actorName}` : ""}</li>
             ))}
           </ul>
         </aside>
@@ -133,12 +134,12 @@ export default async function WorkspacePage({ params, searchParams }: { params: 
         <section className="min-w-0 p-4 md:p-6">
           {isProspect ? (
             <div className="space-y-6">
-              {pendingInvitation ? <Alert tone="success" title="You were invited">{pendingInvitation.message || "The customer invited you to this assignment."}</Alert> : null}
+              {pendingInvitation ? <Alert tone="success" title={t("ws.invited.title")}>{pendingInvitation.message || t("ws.invited.body")}</Alert> : null}
               <div className="rounded-lg border border-line bg-surface p-5">
-                <h2 className="font-semibold">Brief</h2>
-                <p className="prose-plain mt-2 text-sm text-ink-2">{a.description || "No description provided."}</p>
-                <DescriptionList className="mt-4" items={[{ label: "Service", value: category?.name }, { label: "Language", value: language ? `${language.name} · ${humanize(a.requiredLanguageLevel)}${a.editorialRequired ? " · editorial" : ""}` : "—" }, { label: "Domain", value: domain ? `${domain.name} · ${humanize(a.domainRequirement)}` : "Not required" }, { label: "Knowledge source", value: humanize(a.knowledgeSourceType) }, { label: "Word count", value: a.wordCount ?? "—" }, { label: "Deadline", value: formatDate(a.deadline) }, { label: "Budget", value: a.budgetMinor ? formatMoney(a.budgetMinor, a.currency) : "Not stated" }, { label: "Customer", value: org?.name ?? customer?.name }]} />
-                <p className="mt-4 text-xs text-ink-3">Source material and files become visible after your offer is accepted. Confidentiality: {CONFIDENTIALITY_COPY[a.confidentiality].short} AI policy: {humanize(a.aiPolicy)}.</p>
+                <h2 className="font-semibold">{t("ws.brief")}</h2>
+                <p className="prose-plain mt-2 text-sm text-ink-2">{a.description || t("ws.noDescription")}</p>
+                <DescriptionList className="mt-4" items={[{ label: t("ws.service"), value: category?.name }, { label: t("ws.language"), value: language ? `${language.name} · ${humanize(a.requiredLanguageLevel)}${a.editorialRequired ? ` · ${t("common.editorial")}` : ""}` : "—" }, { label: t("ws.domain"), value: domain ? `${domain.name} · ${humanize(a.domainRequirement)}` : t("ws.notRequired") }, { label: t("ws.knowledgeSource"), value: humanize(a.knowledgeSourceType) }, { label: t("ws.wordCount"), value: a.wordCount ?? "—" }, { label: t("ws.deadline"), value: formatDate(a.deadline, dl) }, { label: t("ws.budget"), value: a.budgetMinor ? formatMoney(a.budgetMinor, a.currency) : t("ws.notStated") }, { label: t("ws.customer"), value: org?.name ?? customer?.name }]} />
+                <p className="mt-4 text-xs text-ink-3">{t("ws.prospectNote", { conf: t(`conf.${a.confidentiality}.short`), ai: humanize(a.aiPolicy) })}</p>
               </div>
               {offerRows.length ? <OffersList publicId={a.publicId} offers={offerRows.map((r) => ({ ...r.o, name: r.name }))} viewerRole="PROFESSIONAL" viewerId={viewer.userId} /> : null}
               {!offerRows.some((r) => r.o.status === "PENDING") ? <OfferForm publicId={a.publicId} currency={a.currency} listings={ownListings} agreementAccepted={agreementAccepted} defaultRole={(category?.defaultContributionRole as "AUTHOR") ?? "AUTHOR"} /> : null}
@@ -148,31 +149,31 @@ export default async function WorkspacePage({ params, searchParams }: { params: 
             <div className="space-y-6">
               {isCustomerSide && showMatches ? (
                 <div className="space-y-3">
-                  <Alert tone="info" title={`Recommended: ${recommendation.headline}`}>{recommendation.detail}</Alert>
-                  {a.status === "DRAFT" ? <Alert tone="warn">This assignment is a draft. Open it for offers or invite a professional.</Alert> : null}
+                  <Alert tone="info" title={t("ws.recommended", { what: recommendation.headline })}>{recommendation.detail}</Alert>
+                  {a.status === "DRAFT" ? <Alert tone="warn">{t("ws.draftWarning")}</Alert> : null}
                   {matches.length ? (
                     <div>
-                      <h2 className="text-sm font-semibold">Suggested professionals</h2>
+                      <h2 className="text-sm font-semibold">{t("ws.suggested")}</h2>
                       <div className="mt-2 grid gap-3 md:grid-cols-2">
                         {matches.map((m) => (
                           <ProfessionalCard key={m.id} p={m} action={<InviteButton publicId={a.publicId} professionalUserId={m.userId} invited={invited.includes(m.userId)} />} />
                         ))}
                       </div>
-                      <p className="mt-2 text-xs text-ink-3"><Link href={`/professionals?language=${a.languageCode ?? ""}${domain ? `&domain=${domain.path}` : ""}`} className="underline">Browse all professionals</Link></p>
+                      <p className="mt-2 text-xs text-ink-3"><Link href={`/professionals?language=${a.languageCode ?? ""}${domain ? `&domain=${domain.path}` : ""}`} className="underline">{t("ws.browseAll")}</Link></p>
                     </div>
                   ) : (
-                    <p className="text-sm text-ink-3">No matching professionals yet. <Link href="/professionals" className="underline">Browse all</Link> or wait for offers.</p>
+                    <p className="text-sm text-ink-3">{t("ws.noMatches")} <Link href="/professionals" className="underline">{t("ws.browseAllShort")}</Link> {t("ws.orWait")}</p>
                   )}
                 </div>
               ) : null}
               {offerRows.length && ["OPEN", "PROFESSIONAL_INVITED", "OFFER_RECEIVED", "ACCEPTED"].includes(a.status) ? <OffersList publicId={a.publicId} offers={offerRows.map((r) => ({ ...r.o, name: r.name }))} viewerRole={isCustomerSide ? "CUSTOMER" : "PROFESSIONAL"} viewerId={viewer.userId} /> : null}
               {revisionRequests.filter((r) => r.r.status === "OPEN").map((r) => (
-                <Alert key={r.r.id} tone="warn" title={`Revision requested on Version ${r.versionNumber} by ${r.userName}`}>{r.r.message}</Alert>
+                <Alert key={r.r.id} tone="warn" title={t("ws.revisionOn", { n: r.versionNumber, name: r.userName })}>{r.r.message}</Alert>
               ))}
               <Conversation publicId={a.publicId} messages={messages} viewerId={viewer.userId} canSend={can(ctx, "send_message")} />
             </div>
           ) : (
-            <Alert tone="info" title="Content access is restricted">{ctx.role === "ADMIN" ? "Administrators see metadata only. Request a time-limited, audited content access grant from the admin console if operationally necessary." : "Your role on this assignment does not include content access."}</Alert>
+            <Alert tone="info" title={t("ws.restricted.title")}>{ctx.role === "ADMIN" ? t("ws.restricted.admin") : t("ws.restricted.role")}</Alert>
           )}
         </section>
 
@@ -182,31 +183,31 @@ export default async function WorkspacePage({ params, searchParams }: { params: 
           {isProfessional ? <ProfessionalActions publicId={a.publicId} status={a.status} latestSubmittedVersionId={latestSubmitted?.id ?? null} canSign={can(ctx, "sign")} canSubmit={can(ctx, "submit_version")} canDispute={can(ctx, "open_dispute")} /> : null}
 
           <div>
-            <h2 className="text-xs font-medium uppercase tracking-wider text-ink-3">Details</h2>
-            <DescriptionList className="mt-2 sm:grid-cols-1" items={[{ label: "Service", value: category?.name }, { label: "Language", value: language ? `${language.name} · ${humanize(a.requiredLanguageLevel)}${a.editorialRequired ? " · editorial" : ""}` : "—" }, { label: "Domain", value: domain ? `${domain.name} · ${humanize(a.domainRequirement)}` : "Not required" }, { label: "Knowledge source", value: humanize(a.knowledgeSourceType) }, { label: "Deadline", value: formatDate(a.deadline) }, { label: "Price", value: a.agreedPriceMinor != null ? `${formatMoney(a.agreedPriceMinor, a.currency)}${pay.captured ? " · paid" : ""}` : a.budgetMinor ? `Budget ${formatMoney(a.budgetMinor, a.currency)}` : "—" }, { label: "Customer", value: org?.name ?? customer?.name }, { label: "AI policy", value: humanize(a.aiPolicy) }, { label: "Portfolio permission", value: humanize(a.portfolioPermission) }]} />
-            {a.description && canContent ? <details className="mt-3"><summary className="cursor-pointer text-xs text-ink-3">Brief and instructions</summary><p className="prose-plain mt-2 text-ink-2">{a.description}</p>{a.additionalInstructions ? <p className="prose-plain mt-2 text-ink-2">{a.additionalInstructions}</p> : null}{a.sourceUrls.length ? <ul className="mt-2 space-y-1">{a.sourceUrls.map((u) => <li key={u}><a href={u} target="_blank" rel="noopener nofollow" className="break-all text-accent underline">{u}</a></li>)}</ul> : null}</details> : null}
+            <h2 className="text-xs font-medium uppercase tracking-wider text-ink-3">{t("ws.details")}</h2>
+            <DescriptionList className="mt-2 sm:grid-cols-1" items={[{ label: t("ws.service"), value: category?.name }, { label: t("ws.language"), value: language ? `${language.name} · ${humanize(a.requiredLanguageLevel)}${a.editorialRequired ? ` · ${t("common.editorial")}` : ""}` : "—" }, { label: t("ws.domain"), value: domain ? `${domain.name} · ${humanize(a.domainRequirement)}` : t("ws.notRequired") }, { label: t("ws.knowledgeSource"), value: humanize(a.knowledgeSourceType) }, { label: t("ws.deadline"), value: formatDate(a.deadline, dl) }, { label: t("ws.price"), value: a.agreedPriceMinor != null ? `${formatMoney(a.agreedPriceMinor, a.currency)}${pay.captured ? ` · ${t("ws.paid")}` : ""}` : a.budgetMinor ? `${t("ws.budget")} ${formatMoney(a.budgetMinor, a.currency)}` : "—" }, { label: t("ws.customer"), value: org?.name ?? customer?.name }, { label: t("ws.aiPolicy"), value: humanize(a.aiPolicy) }, { label: t("ws.portfolioPermission"), value: humanize(a.portfolioPermission) }]} />
+            {a.description && canContent ? <details className="mt-3"><summary className="cursor-pointer text-xs text-ink-3">{t("ws.briefAndInstructions")}</summary><p className="prose-plain mt-2 text-ink-2">{a.description}</p>{a.additionalInstructions ? <p className="prose-plain mt-2 text-ink-2">{a.additionalInstructions}</p> : null}{a.sourceUrls.length ? <ul className="mt-2 space-y-1">{a.sourceUrls.map((u) => <li key={u}><a href={u} target="_blank" rel="noopener nofollow" className="break-all text-accent underline">{u}</a></li>)}</ul> : null}</details> : null}
           </div>
 
           {canContent ? (
             <>
               <VersionPanel publicId={a.publicId} versions={versions} canSubmit={can(ctx, "submit_version")} canSign={can(ctx, "sign")} viewerId={viewer.userId} />
               <div>
-                <h2 className="text-xs font-medium uppercase tracking-wider text-ink-3">Files</h2>
+                <h2 className="text-xs font-medium uppercase tracking-wider text-ink-3">{t("ws.files")}</h2>
                 {files.length ? (
                   <ul className="mt-2 space-y-1">
                     {files.map((f) => (
                       <li key={f.id} className="flex items-center justify-between gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5"><a href={`/api/files/${f.id}`} target="_blank" rel="noopener" className="truncate hover:underline">{f.filename}</a><span className="shrink-0 text-xs text-ink-3">{humanize(f.purpose)} · {formatBytes(f.sizeBytes)}</span></li>
                     ))}
                   </ul>
-                ) : <p className="mt-2 text-xs text-ink-3">No files.</p>}
-                {a.confidentiality === "STRICT_CONFIDENTIAL" ? <p className="mt-2 text-xs text-warn">Strictly confidential: do not export or share files outside the platform.</p> : null}
+                ) : <p className="mt-2 text-xs text-ink-3">{t("ws.noFiles")}</p>}
+                {a.confidentiality === "STRICT_CONFIDENTIAL" ? <p className="mt-2 text-xs text-warn">{t("ws.strictWarning")}</p> : null}
               </div>
               {contribs.length ? (
                 <div>
-                  <h2 className="text-xs font-medium uppercase tracking-wider text-ink-3">Provenance</h2>
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-ink-3">{t("ws.provenance")}</h2>
                   <ul className="mt-2 space-y-1.5">
                     {contribs.map((c) => (
-                      <li key={c.id} className="rounded-md border border-line bg-surface px-2.5 py-1.5"><span className="font-medium">{c.displayName ?? participants.find((p) => p.userId === c.userId)?.name ?? "Contributor"}</span>{c.displayTitle ? <span className="text-ink-3"> · {c.displayTitle}</span> : null}<span className="block text-xs text-ink-3">{humanize(c.role)} · {c.scope}{c.signedAt ? ` · signed ${formatDate(c.signedAt)}` : c.status === "COMPLETED" ? " · completed" : ""}</span></li>
+                      <li key={c.id} className="rounded-md border border-line bg-surface px-2.5 py-1.5"><span className="font-medium">{c.displayName ?? participants.find((p) => p.userId === c.userId)?.name ?? "Contributor"}</span>{c.displayTitle ? <span className="text-ink-3"> · {c.displayTitle}</span> : null}<span className="block text-xs text-ink-3">{t(`role.${c.role}`)} · {c.scope}{c.signedAt ? ` · ${t("ws.signedOn", { date: formatDate(c.signedAt, dl) })}` : c.status === "COMPLETED" ? ` · ${t("ws.completed")}` : ""}</span></li>
                     ))}
                   </ul>
                 </div>
@@ -216,7 +217,7 @@ export default async function WorkspacePage({ params, searchParams }: { params: 
               {can(ctx, "manage_confidentiality") ? <ConfidentialityForm publicId={a.publicId} level={a.confidentiality} aiPolicy={a.aiPolicy} portfolioPermission={a.portfolioPermission} /> : null}
             </>
           ) : null}
-          {ctx.role === "ADMIN" ? <LinkButton href={`/admin/assignments/${a.id}`} variant="outline" size="sm">Open in admin console</LinkButton> : null}
+          {ctx.role === "ADMIN" ? <LinkButton href={`/admin/assignments/${a.id}`} variant="outline" size="sm">{t("ws.openInAdmin")}</LinkButton> : null}
         </aside>
       </div>
     </div>

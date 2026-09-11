@@ -1,12 +1,15 @@
 import Link from "next/link";
 import type { ProfessionalCard as Card } from "@/server/domain/matching/service";
 import { Avatar } from "@/components/ui/avatar";
-import { Badge, VerificationBadge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
+import { VerificationBadge } from "@/components/ui/status-badge";
 import { Stars } from "@/components/ui/stars";
 import { formatMoney } from "@/lib/money";
 import { humanize, truncate } from "@/lib/utils";
+import { getT } from "@/server/i18n";
 
-export function ProfessionalCard({ p, action }: { p: Card; action?: React.ReactNode }) {
+export async function ProfessionalCard({ p, action }: { p: Card; action?: React.ReactNode }) {
+  const { t } = await getT();
   const cheapest = [...p.listings].sort((a, b) => a.basePriceMinor - b.basePriceMinor)[0];
   return (
     <article className="flex flex-col rounded-lg border border-line bg-surface p-5">
@@ -21,8 +24,8 @@ export function ProfessionalCard({ p, action }: { p: Card; action?: React.ReactN
           </div>
           <p className="mt-0.5 text-sm text-ink-2">{p.title}</p>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-3">
-            {p.ratingCount ? <Stars value={p.ratingAvg} count={p.ratingCount} /> : <span>No ratings yet</span>}
-            <span>{p.completedAssignments} completed</span>
+            {p.ratingCount ? <Stars value={p.ratingAvg} count={p.ratingCount} /> : <span>{t("common.noRatings")}</span>}
+            <span>{t("common.completedN", { n: p.completedAssignments })}</span>
             {p.country ? <span>{p.country}{p.region ? `, ${p.region}` : ""}</span> : null}
           </div>
         </div>
@@ -31,7 +34,7 @@ export function ProfessionalCard({ p, action }: { p: Card; action?: React.ReactN
       <div className="mt-3 flex flex-wrap gap-1.5">
         {p.languages.map((l) => (
           <Badge key={l.code} tone={l.verified ? "accent" : "neutral"} title={`${l.name}: ${humanize(l.level)}${l.editorialCapable ? ", editorial" : ""}`}>
-            {l.name} · {humanize(l.level)}{l.editorialCapable ? " · editorial" : ""}
+            {l.name} · {humanize(l.level)}{l.editorialCapable ? ` · ${t("common.editorial")}` : ""}
           </Badge>
         ))}
         {p.expertise.slice(0, 4).map((e) => (
@@ -42,10 +45,10 @@ export function ProfessionalCard({ p, action }: { p: Card; action?: React.ReactN
       </div>
       {p.matchReasons?.length ? <p className="mt-3 text-xs text-accent">{p.matchReasons.join(" · ")}</p> : null}
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-3 text-sm">
-        <span className="text-ink-2">{cheapest ? `From ${formatMoney(cheapest.basePriceMinor, cheapest.currency)}${cheapest.pricingModel === "PER_WORD" ? " / word" : cheapest.pricingModel === "HOURLY" ? " / hour" : ""}` : "Custom quotes"}</span>
+        <span className="text-ink-2">{cheapest ? `${t("common.from", { price: formatMoney(cheapest.basePriceMinor, cheapest.currency) })}${cheapest.pricingModel === "PER_WORD" ? ` ${t("common.perWord")}` : cheapest.pricingModel === "HOURLY" ? ` ${t("common.perHour")}` : ""}` : t("common.customQuotes")}</span>
         {action ?? (
           <Link href={`/professionals/${p.slug}`} className="font-medium text-accent hover:underline">
-            View profile →
+            {t("common.viewProfile")}
           </Link>
         )}
       </div>

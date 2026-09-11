@@ -8,18 +8,20 @@ import { NavLink } from "./nav-link";
 import { db } from "@/server/db";
 import { notifications } from "@/server/db/schema";
 import { and, count, eq, isNull } from "drizzle-orm";
+import { getT } from "@/server/i18n";
+import { LanguageSwitch } from "@/components/i18n/language-switch";
 
 export async function AppShell({ viewer, children }: { viewer: Viewer; children: React.ReactNode }) {
-  const [unread] = await db.select({ n: count() }).from(notifications).where(and(eq(notifications.userId, viewer.userId), eq(notifications.channel, "IN_APP"), isNull(notifications.readAt)));
+  const [[unread], { t, locale }] = await Promise.all([db.select({ n: count() }).from(notifications).where(and(eq(notifications.userId, viewer.userId), eq(notifications.channel, "IN_APP"), isNull(notifications.readAt))), getT()]);
   const nav = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/assignments", label: "Assignments" },
-    { href: "/professionals", label: "Find professionals" },
-    ...(viewer.professionalProfileId ? [{ href: "/marketplace", label: "Marketplace" }, { href: "/professional/profile", label: "My professional profile" }] : [{ href: "/professional/onboarding", label: "Become a professional" }]),
-    { href: "/organizations", label: "Organizations" },
-    { href: "/notifications", label: `Notifications${Number(unread.n) ? ` (${unread.n})` : ""}` },
-    { href: "/settings", label: "Settings" },
-    ...(viewer.isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+    { href: "/dashboard", label: t("nav.dashboard") },
+    { href: "/assignments", label: t("nav.assignments") },
+    { href: "/professionals", label: t("nav.findProfessionals") },
+    ...(viewer.professionalProfileId ? [{ href: "/marketplace", label: t("nav.marketplace") }, { href: "/professional/profile", label: t("nav.myProfile") }] : [{ href: "/professional/onboarding", label: t("nav.becomeProfessional") }]),
+    { href: "/organizations", label: t("nav.organizations") },
+    { href: "/notifications", label: `${t("nav.notifications")}${Number(unread.n) ? ` (${unread.n})` : ""}` },
+    { href: "/settings", label: t("nav.settings") },
+    ...(viewer.isAdmin ? [{ href: "/admin", label: t("nav.admin") }] : []),
   ];
   return (
     <div className="min-h-screen md:grid md:grid-cols-[240px_1fr]">
@@ -42,7 +44,8 @@ export async function AppShell({ viewer, children }: { viewer: Viewer; children:
               <p className="truncate text-xs text-ink-3">{viewer.email}</p>
             </div>
           </div>
-          <SignOutButton />
+          <SignOutButton label={t("nav.signOut")} />
+          <p className="mt-2 text-center"><LanguageSwitch locale={locale} next="/dashboard" /></p>
         </div>
       </aside>
       <div className="min-w-0">

@@ -1,7 +1,7 @@
 "use client";
 import { authClient } from "@/lib/auth-client";
 
-export function SignOutButton() {
+export function SignOutButton({ label = "Sign out" }: { label?: string }) {
   return (
     <button
       type="button"
@@ -11,7 +11,7 @@ export function SignOutButton() {
         window.location.href = "/";
       }}
     >
-      Sign out
+      {label}
     </button>
   );
 }

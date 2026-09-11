@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { addCredentialAction, claimExpertiseAction, removeCredentialAction, removeExpertiseAction, removeLanguageAction, submitIdentityAction, upsertLanguageAction } from "@/server/actions/professionals";
+import { addCredentialAction, claimExpertiseAction, removeCredentialAction, removeExpertiseAction, removeLanguageAction, startHostedIdentityAction, submitIdentityAction, upsertLanguageAction } from "@/server/actions/professionals";
 import { useAction } from "@/components/common/use-action";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/form";
@@ -99,5 +99,17 @@ export function IdentityForm({ rejectedNote }: { rejectedNote: string | null }) 
       {submit.error ? <p className="text-xs text-danger">{submit.error}</p> : null}
       <Button size="sm" type="submit" disabled={submit.pending || !doc || !legalName.trim()}>Submit for review</Button>
     </form>
+  );
+}
+
+export function HostedIdentityButton({ rejectedNote }: { rejectedNote: string | null }) {
+  const start = useAction(startHostedIdentityAction, { refresh: false, onSuccess: (d) => { if (d?.redirectUrl) window.location.href = d.redirectUrl; } });
+  return (
+    <div className="space-y-2 text-sm">
+      {rejectedNote ? <p className="rounded-md bg-danger-soft px-3 py-2 text-xs text-danger">Previous attempt was not completed: {rejectedNote}</p> : null}
+      <Button size="sm" disabled={start.pending} onClick={() => start.run()}>{start.pending ? "Starting…" : "Verify my identity"}</Button>
+      {start.error ? <p className="text-xs text-danger">{start.error}</p> : null}
+      <p className="text-xs text-ink-3">You will be redirected to the identity provider and back when finished.</p>
+    </div>
   );
 }

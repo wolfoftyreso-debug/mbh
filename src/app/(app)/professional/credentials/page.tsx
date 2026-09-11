@@ -4,22 +4,25 @@ import { getOwnProfile } from "@/server/domain/professionals/service";
 import { db } from "@/server/db";
 import { domains, languages } from "@/server/db/schema";
 import { PageHeader, Card, CardHeader, CardBody } from "@/components/ui/card";
-import { ClaimBadge, VerificationBadge } from "@/components/ui/badge";
-import { CredentialsManager, ExpertiseManager, IdentityForm, LanguagesManager } from "@/components/professional/competence-managers";
+import { ClaimBadge } from "@/components/ui/badge";
+import { VerificationBadge } from "@/components/ui/status-badge";
+import { CredentialsManager, ExpertiseManager, IdentityForm, LanguagesManager, HostedIdentityButton } from "@/components/professional/competence-managers";
+import { identityProviderInfo } from "@/server/identity/service";
 import { humanize, formatDate } from "@/lib/utils";
 
 export default async function CredentialsPage() {
   const viewer = await requireProfessional();
   const data = await getOwnProfile(viewer);
   if (!data) return null;
+  const identity = identityProviderInfo();
   const [langs, doms] = await Promise.all([db.select().from(languages).where(eq(languages.active, true)).orderBy(asc(languages.name)), db.select().from(domains).where(eq(domains.active, true)).orderBy(asc(domains.path))]);
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <PageHeader title="Competence and verification" description={<span className="inline-flex items-center gap-2">Current status: <VerificationBadge status={data.profile.verificationStatus} /></span>} />
       <Card>
-        <CardHeader title="Identity verification" description="Upload an identity document. Reviewed by platform staff, stored privately, deleted after 90 days." />
+        <CardHeader title="Identity verification" description={identity.hosted ? "Verified through a hosted identity provider (document and selfie). The platform receives only the verdict and your legal name." : "Upload an identity document. Reviewed by platform staff, stored privately, deleted after 90 days."} />
         <CardBody>
-          {data.profile.identityVerifiedAt ? <p className="text-sm text-accent">Identity verified on {formatDate(data.profile.identityVerifiedAt)}.</p> : data.identity?.status === "PENDING_REVIEW" ? <p className="text-sm text-ink-2">Your identity document is under review.</p> : <IdentityForm rejectedNote={data.identity?.status === "REJECTED" ? data.identity.notes : null} />}
+          {data.profile.identityVerifiedAt ? <p className="text-sm text-accent">Identity verified on {formatDate(data.profile.identityVerifiedAt)}.</p> : data.identity?.status === "PENDING_REVIEW" ? <p className="text-sm text-ink-2">{identity.hosted ? "Your identity verification is in progress with the provider." : "Your identity document is under review."}</p> : identity.hosted ? <HostedIdentityButton rejectedNote={data.identity?.status === "REJECTED" ? data.identity.notes : null} /> : <IdentityForm rejectedNote={data.identity?.status === "REJECTED" ? data.identity.notes : null} />}
         </CardBody>
       </Card>
       <Card>
